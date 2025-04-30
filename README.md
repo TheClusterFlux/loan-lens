@@ -1,30 +1,70 @@
-# new-project-template
+# Loan Lens
 
-once read, please replace this readme with one detailing your service, what it does, how to use it, and any other relevant information. 😊
+A modern web application for visualizing and comparing loan repayment strategies. Loan Lens allows you to dynamically model different loan repayment scenarios and see the impact of various factors like interest rates, monthly payments, and additional deposits.
 
-This repository is a template for creating new projects with Kubernetes-based deployments. It includes tools and configurations to streamline the setup process.
+## Features
 
-## Key Features
+- **Multiple Loan Scenarios**: Create and compare different loan repayment strategies side by side
+- **Interactive Visualization**: Dynamic charts showing loan balance over time
+- **Additional Deposits**: Model the impact of making extra payments at specific months
+- **Key Metrics**: View time to repayment, total repayment amount, and total interest paid
+- **Modern UI**: Responsive design that works on desktops, tablets, and mobile devices
 
-- **Deployment YAML Generator**: A Bash script (`init.sh`) to generate Kubernetes deployment, service, and optional ingress configurations.
-- **GitHub Actions Workflow**: Automates the deployment of your service to a Kubernetes cluster.
+## Technology Stack
 
-## How to Use
+- **Frontend**: React with Material UI for a responsive, modern interface
+- **Backend**: Node.js with Express for API services and calculations
+- **Visualization**: Chart.js for interactive graphs
+- **Deployment**: Containerized with Docker for easy deployment on Kubernetes
 
-1. **Clone or Use as a Template**:
-   - Clone this repository or use the "Use this template" button on GitHub to create a new repository.
+## Local Development
 
-2. **Run the Deployment YAML Generator**:
-   - Execute the `init.sh` script to generate Kubernetes YAML files:
-     ```bash
-     ./init.sh
-     ```
+### Prerequisites
 
-3. **Add Your Code**:
-   - Add your service code and a `Dockerfile` to the repository.
-   - Ensure the service is exposed on port 8080 or update the generated YAML accordingly.
+- Node.js (version 16 or higher)
+- npm or yarn
 
-4. **Trigger Deployment**:
-   - Push changes to the `main` branch to deploy your service using the pre-configured GitHub Actions workflow.
+### Running Locally
 
-This template simplifies Kubernetes deployments and ensures consistency across projects.
+1. **Start the backend server**:
+   ```
+   cd backend
+   npm install
+   npm start
+   ```
+
+2. **Start the frontend development server**:
+   ```
+   cd frontend
+   npm install
+   npm start
+   ```
+
+3. Open your browser and navigate to `http://localhost:3000`
+
+## Deployment
+
+This application is configured to be deployed to a Kubernetes cluster using the included Dockerfile and Kubernetes manifests.
+
+### Docker Build
+
+To build the Docker image locally:
+```
+docker build -t loan-lens .
+```
+
+### Kubernetes Deployment
+
+The application is automatically deployed to the Kubernetes cluster via GitHub Actions when changes are pushed to the main branch.
+
+## Usage
+
+1. **Add a new loan**: Click the "Add Loan" button to create a new loan scenario
+2. **Configure loan parameters**: Enter the principal amount, interest rate, and monthly payment
+3. **Add additional deposits**: Specify months and amounts for extra payments
+4. **Compare scenarios**: Create multiple loan tabs to compare different repayment strategies
+5. **View the results**: See the visualization and key metrics update in real-time
+
+## License
+
+This project is open source and available under the MIT license.

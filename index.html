@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Loan Lens</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.3.0/dist/chart.umd.min.js"></script>
+  <script src="app.js"></script>
+  <style>
+    body {
+      font-family: 'Roboto', sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f5f5f5;
+      color: #333;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    
+    header {
+      text-align: center;
+      padding: 20px 0;
+    }
+    
+    h1 {
+      color: #1976d2;
+      margin: 0;
+    }
+    
+    .subtitle {
+      color: #666;
+      font-weight: 300;
+    }
+    
+    .chart-container {
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      padding: 20px;
+      margin: 20px 0;
+      height: 400px;
+      position: relative;
+    }
+    
+    .tabs-controls {
+      margin: 20px 0;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    
+    .tab-button {
+      background-color: #f0f0f0;
+      border: 1px solid #ddd;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    
+    .tab-button.active {
+      background-color: #1976d2;
+      color: white;
+      border-color: #1976d2;
+    }
+    
+    button {
+      padding: 8px 16px;
+      background-color: #1976d2;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: background-color 0.2s ease;
+    }
+    
+    button:hover {
+      background-color: #135ba1;
+    }
+    
+    .tab-controls {
+      display: flex;
+      gap: 10px;
+      margin-right: 20px;
+    }
+    
+    .tab-panels {
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      padding: 20px;
+    }
+    
+    .tab-panel {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    
+    @media (max-width: 768px) {
+      .tab-panel {
+        grid-template-columns: 1fr;
+      }
+    }
+    
+    .loan-form {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+    
+    .form-row {
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .form-row label {
+      margin-bottom: 5px;
+      color: #555;
+    }
+    
+    .form-row input {
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 16px;
+    }
+    
+    .results-container {
+      background-color: #e3f2fd;
+      border-radius: 8px;
+      padding: 15px;
+      margin-top: 20px;
+    }
+    
+    .results-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 15px;
+    }
+    
+    @media (max-width: 600px) {
+      .results-row {
+        grid-template-columns: 1fr;
+      }
+    }
+    
+    .result-box {
+      text-align: center;
+      padding: 10px;
+    }
+    
+    .result-box h3 {
+      margin: 0;
+      font-size: 16px;
+      color: #555;
+    }
+    
+    .time-to-repayment-value,
+    .total-repayment-value,
+    .total-interest-value {
+      font-size: 24px;
+      font-weight: bold;
+      color: #1976d2;
+      margin: 10px 0 5px;
+    }
+    
+    .time-to-repayment-years {
+      font-size: 14px;
+      color: #666;
+    }
+    
+    .deposits-section {
+      background-color: #f9f9f9;
+      border-radius: 8px;
+      padding: 15px;
+    }
+    
+    .deposits-section h3 {
+      margin-top: 0;
+    }
+    
+    .add-deposit-btn {
+      margin-top: 10px;
+    }
+    
+    .deposits-list-container {
+      margin-top: 20px;
+      border-top: 1px solid #ddd;
+      padding-top: 10px;
+    }
+    
+    .deposits-list {
+      max-height: 200px;
+      overflow-y: auto;
+      padding-left: 20px;
+    }
+    
+    .deposits-list li {
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .remove-deposit {
+      background-color: #f44336;
+      padding: 4px 8px;
+      font-size: 12px;
+    }
+    
+    .remove-deposit:hover {
+      background-color: #d32f2f;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Loan Lens</h1>
+      <p class="subtitle">Visualize and compare your loan repayment strategies</p>
+    </header>
+    
+    <div class="chart-container">
+      <canvas id="loan-chart"></canvas>
+    </div>
+    
+    <div class="tabs-controls">
+      <div class="tab-controls">
+        <button id="add-tab-btn">Add Loan</button>
+        <button id="duplicate-tab-btn">Duplicate Loan</button>
+      </div>
+      <div id="tabs-container"></div>
+    </div>
+    
+    <div class="tab-panels" id="tab-panels"></div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: loan-lens
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: loan-lens
+  template:
+    metadata:
+      labels:
+        app: loan-lens
+    spec:
+      containers:
+        - name: loan-lens
+          image: docker.io/keanuwatts/theclusterflux:loan-lens
+          imagePullPolicy: Always
+      imagePullSecrets:
+        - name: dockerhub-secret
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: loan-lens
+spec:
+  selector:
+    app: loan-lens
+  ports:
+    - protocol: TCP
+      port: 8080
+      targetPort: 8080
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: loan-lens
+  namespace: default
+  annotations:
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - loan-lens.theclusterflux.com
+    secretName: theclusterflux
+  rules:
+  - host: loan-lens.theclusterflux.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: loan-lens
+            port:
+              number: 8080
