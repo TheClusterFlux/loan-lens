@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Investment Target Calculator</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.3.0/dist/chart.umd.min.js"></script>
+  <script src="investment-calculator.js"></script>
+  <style>
+    body {
+      font-family: 'Roboto', sans-serif;
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      color: #333;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 40px 20px;
+    }
+    
+    header {
+      text-align: center;
+      padding: 40px 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: white;
+    }
+    
+    .header-left {
+      flex: 1;
+    }
+    
+    .header-center {
+      flex: 2;
+      text-align: center;
+    }
+    
+    .header-right {
+      flex: 1;
+      text-align: right;
+    }
+    
+    .back-button {
+      background: rgba(255, 255, 255, 0.2);
+      color: white;
+      text-decoration: none;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.3s ease;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+    
+    .back-button:hover {
+      background: rgba(255, 255, 255, 0.3);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    }
+    
+    h1 {
+      color: white;
+      margin: 0;
+      font-size: 2.5em;
+      font-weight: 300;
+    }
+    
+    .subtitle {
+      color: rgba(255, 255, 255, 0.9);
+      font-weight: 300;
+      font-size: 1.1em;
+      margin-top: 10px;
+    }
+    
+    .calculator-container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 30px;
+      margin: 30px 0;
+    }
+    
+    @media (max-width: 768px) {
+      .calculator-container {
+        grid-template-columns: 1fr;
+      }
+    }
+    
+    .input-panel {
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 12px;
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+      padding: 30px;
+      backdrop-filter: blur(10px);
+    }
+    
+    .form-group {
+      margin-bottom: 15px;
+    }
+    
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+    
+    .form-grid .form-group {
+      margin-bottom: 0;
+    }
+    
+    .form-section {
+      border-bottom: 1px solid #eee;
+      padding-bottom: 15px;
+      margin-bottom: 20px;
+    }
+    
+    .form-section:last-child {
+      border-bottom: none;
+      margin-bottom: 0;
+      padding-bottom: 0;
+    }
+    
+    .section-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #1976d2;
+      margin-bottom: 15px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    @media (max-width: 768px) {
+      .form-grid {
+        grid-template-columns: 1fr;
+        gap: 15px;
+      }
+    }
+    
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: 500;
+      color: #555;
+    }
+    
+    input[type="number"], input[type="date"] {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 16px;
+      box-sizing: border-box;
+    }
+    
+    input[type="number"]:focus, input[type="date"]:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+    }
+    
+    .results-panel {
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 12px;
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+      padding: 30px;
+      backdrop-filter: blur(10px);
+    }
+    
+    .result-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid #eee;
+    }
+    
+    .result-item:last-child {
+      border-bottom: none;
+    }
+    
+    .result-label {
+      font-weight: 500;
+      color: #555;
+    }
+    
+    .result-value {
+      font-weight: 700;
+      color: #667eea;
+      font-size: 18px;
+    }
+    
+    .result-value.highlight {
+      font-size: 24px;
+      color: #4caf50;
+    }
+    
+    .chart-container {
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 12px;
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+      padding: 30px;
+      margin: 30px 0;
+      height: 400px;
+      position: relative;
+      backdrop-filter: blur(10px);
+    }
+    
+    .chart-tabs {
+      display: flex;
+      gap: 15px;
+      margin-bottom: 30px;
+    }
+    
+    .chart-tab-button {
+      background: rgba(255, 255, 255, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      color: white;
+      padding: 12px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-size: 14px;
+      font-weight: 500;
+      backdrop-filter: blur(10px);
+    }
+    
+    .chart-tab-button.active {
+      background: rgba(255, 255, 255, 0.9);
+      color: #333;
+      border-color: rgba(255, 255, 255, 0.9);
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+    
+    .chart-tab-button:hover:not(.active) {
+      background: rgba(255, 255, 255, 0.3);
+    }
+    
+    .scenario-tabs {
+      display: flex;
+      gap: 15px;
+      margin: 30px 0;
+    }
+    
+    .tab-button {
+      background: rgba(255, 255, 255, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      color: white;
+      padding: 12px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-weight: 500;
+      backdrop-filter: blur(10px);
+    }
+    
+    .tab-button.active {
+      background: rgba(255, 255, 255, 0.9);
+      color: #333;
+      border-color: rgba(255, 255, 255, 0.9);
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+    
+    .add-scenario-btn {
+      background: linear-gradient(45deg, #4caf50, #45a049);
+      color: white;
+      border: none;
+      padding: 12px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-left: 15px;
+      font-weight: 500;
+      transition: all 0.3s ease;
+    }
+    
+    .add-scenario-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    }
+    
+    .add-scenario-btn:hover {
+      background-color: #45a049;
+    }
+    
+    .scenario-panel {
+      display: none;
+    }
+    
+    .scenario-panel.active {
+      display: block;
+    }
+    
+    .passive-income-info {
+      background: #e3f2fd;
+      border-left: 4px solid #1976d2;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+    
+    .passive-income-info h3 {
+      margin: 0 0 10px 0;
+      color: #1976d2;
+    }
+    
+    .passive-income-info p {
+      margin: 0;
+      color: #555;
+    }
+    
+    .error {
+      color: #f44336;
+      font-size: 14px;
+      margin-top: 5px;
+    }
+    
+    .success {
+      color: #4caf50;
+      font-size: 14px;
+      margin-top: 5px;
+    }
+    
+    .field-with-tooltip {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    
+    .info-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 16px;
+      height: 16px;
+      background-color: #1976d2;
+      color: white;
+      border-radius: 50%;
+      font-size: 10px;
+      font-weight: bold;
+      cursor: help;
+      position: relative;
+    }
+    
+    .tooltip {
+      position: absolute;
+      bottom: 125%;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: #333;
+      color: white;
+      padding: 12px 16px;
+      border-radius: 6px;
+      font-size: 13px;
+      line-height: 1.4;
+      z-index: 1000;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.2s, visibility 0.2s;
+      width: 280px;
+      max-width: 90vw;
+      white-space: normal;
+      text-align: left;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+    
+    .tooltip::after {
+      content: '';
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      border: 5px solid transparent;
+      border-top-color: #333;
+    }
+    
+    .info-icon:hover .tooltip {
+      opacity: 1;
+      visibility: visible;
+    }
+    
+    .target-method-toggle {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+    
+    .toggle-button {
+      padding: 8px 16px;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      background: rgba(255, 255, 255, 0.1);
+      color: #333;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.3s ease;
+    }
+    
+    .toggle-button.active {
+      background: linear-gradient(45deg, #667eea, #764ba2);
+      color: white;
+      border-color: transparent;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+    
+    .age-inputs {
+      display: none;
+    }
+    
+    .age-inputs.active {
+      display: block;
+    }
+    
+    .date-inputs {
+      display: none;
+    }
+    
+    .date-inputs.active {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="header-left">
+        <a href="index.html" class="back-button">← Back to Suite</a>
+      </div>
+      <div class="header-center">
+        <h1>Investment Target Calculator</h1>
+        <p class="subtitle">Calculate how much you need to invest monthly to reach your passive income goals</p>
+      </div>
+      <div class="header-right"></div>
+    </header>
+
+    <div class="scenario-tabs">
+      <div class="tab-button active" onclick="switchScenario(0)">Scenario 1</div>
+      <button class="add-scenario-btn" onclick="addScenario()">+ Add Scenario</button>
+    </div>
+
+    <div id="scenario-0" class="scenario-panel active">
+      <div class="calculator-container">
+        <div class="input-panel">
+          <h3>Investment Parameters</h3>
+          
+          <!-- Goal Settings -->
+          <div class="form-section">
+            <div class="section-title">Goal Settings</div>
+            
+            <div class="form-group">
+              <div class="field-with-tooltip">
+                <label for="target-income-0">Target Monthly Passive Income (pre tax)</label>
+                <div class="info-icon">i
+                  <div class="tooltip">The amount of monthly income you want to receive from your investments without touching the principal. This is typically generated from dividends, interest, or systematic withdrawals.</div>
+                </div>
+              </div>
+              <input type="number" id="target-income-0" min="0" step="100" value="5000" oninput="calculateInvestment(0)">
+            </div>
+            
+            <div class="form-group">
+              <div class="field-with-tooltip">
+                <label>Target Timeline</label>
+                <div class="info-icon">i
+                  <div class="tooltip">Choose how you want to specify when you want to achieve your goal - either by selecting a specific date or by setting a target age.</div>
+                </div>
+              </div>
+              <div class="target-method-toggle">
+                <div class="toggle-button active" onclick="toggleTargetMethod(0, 'date')">Target Date</div>
+                <div class="toggle-button" onclick="toggleTargetMethod(0, 'age')">Target Age</div>
+              </div>
+              
+              <div class="date-inputs active" id="date-inputs-0">
+                <label for="target-date-0">Target Date</label>
+                <input type="date" id="target-date-0" oninput="calculateInvestment(0)">
+              </div>
+              
+              <div class="age-inputs" id="age-inputs-0">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                  <div>
+                    <label for="birth-date-0">Date of Birth</label>
+                    <input type="date" id="birth-date-0" oninput="calculateInvestment(0)">
+                  </div>
+                  <div>
+                    <label for="target-age-0">Target Age</label>
+                    <input type="number" id="target-age-0" min="18" max="100" value="65" oninput="calculateInvestment(0)">
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Investment Settings -->
+          <div class="form-section">
+            <div class="section-title">Investment Settings</div>
+            
+            <div class="form-grid">
+              <div class="form-group">
+                <div class="field-with-tooltip">
+                  <label for="annual-return-0">Expected Annual Return (%)</label>
+                  <div class="info-icon">i
+                    <div class="tooltip">The average yearly return you expect from your investments. Historical stock market average is around 7-10%. Conservative estimates: 4-6%, Moderate: 6-8%, Aggressive: 8-12%.</div>
+                  </div>
+                </div>
+                <input type="number" id="annual-return-0" min="0" max="50" step="0.1" value="7" oninput="calculateInvestment(0)">
+              </div>
+              
+              <div class="form-group">
+                <div class="field-with-tooltip">
+                  <label for="initial-investment-0">Initial Investment</label>
+                  <div class="info-icon">i
+                    <div class="tooltip">The amount of money you already have invested or plan to invest as a lump sum at the beginning. This can be 0 if you're starting from scratch.</div>
+                  </div>
+                </div>
+                <input type="number" id="initial-investment-0" min="0" step="1000" value="0" oninput="calculateInvestment(0)">
+              </div>
+            </div>
+          </div>
+          
+          <!-- Withdrawal & Risk Settings -->
+          <div class="form-section">
+            <div class="section-title">Withdrawal & Risk Settings</div>
+            
+            <div class="form-grid">
+              <div class="form-group">
+                <div class="field-with-tooltip">
+                  <label for="withdrawal-rate-0">Safe Withdrawal Rate (%)</label>
+                  <div class="info-icon">i
+                    <div class="tooltip">The percentage of your portfolio you can safely withdraw annually without depleting it. The classic "4% rule" suggests 4% is sustainable long-term. More conservative: 3-3.5%, More aggressive: 4.5-5%.</div>
+                  </div>
+                </div>
+                <input type="number" id="withdrawal-rate-0" min="1" max="10" step="0.1" value="4" oninput="calculateInvestment(0)">
+              </div>
+              
+              <div class="form-group">
+                <div class="field-with-tooltip">
+                  <label for="inflation-rate-0">Expected Inflation Rate (%)</label>
+                  <div class="info-icon">i
+                    <div class="tooltip">The expected annual inflation rate to maintain purchasing power. Historical US average is around 2-3%. This adjusts your target income for inflation, so 5,000 today will have the same buying power as the inflated amount in the target year.</div>
+                  </div>
+                </div>
+                <input type="number" id="inflation-rate-0" min="0" max="10" step="0.1" value="2.5" oninput="calculateInvestment(0)">
+              </div>
+            </div>
+          </div>
+          
+          <!-- Chart Settings -->
+          <div class="form-section">
+            <div class="section-title">Chart Settings</div>
+            
+            <div class="form-group">
+              <div class="field-with-tooltip">
+                <label for="projection-years-0">Projection Period (Years)</label>
+                <div class="info-icon">i
+                  <div class="tooltip">How many years beyond your target date to show in the chart. This helps visualize long-term portfolio sustainability during retirement. Default is 50 years or until age 100.</div>
+                </div>
+              </div>
+              <input type="number" id="projection-years-0" min="10" max="70" step="5" value="50" oninput="calculateInvestment(0)">
+            </div>
+          </div>
+        </div>
+        
+        <div class="results-panel">
+          <h3>Investment Results</h3>
+          
+          <div class="result-item">
+            <span class="result-label">Required Portfolio Value:</span>
+            <span class="result-value" id="portfolio-value-0">0</span>
+          </div>
+          
+          <div class="result-item">
+            <span class="result-label">Inflation-Adjusted Target Income:</span>
+            <span class="result-value" id="adjusted-income-0">0</span>
+          </div>
+          
+          <div class="result-item">
+            <span class="result-label">Years to Target:</span>
+            <span class="result-value" id="years-to-target-0">0</span>
+          </div>
+          
+          <div class="result-item">
+            <span class="result-label">Monthly Investment Needed:</span>
+            <span class="result-value highlight" id="monthly-investment-0">0</span>
+          </div>
+          
+          <div class="result-item">
+            <span class="result-label">Total Invested:</span>
+            <span class="result-value" id="total-invested-0">0</span>
+          </div>
+          
+          <div class="result-item">
+            <span class="result-label">Investment Growth:</span>
+            <span class="result-value" id="investment-growth-0">0</span>
+          </div>
+          
+          <div class="result-item">
+            <span class="result-label">Portfolio Sustainability:</span>
+            <span class="result-value" id="portfolio-sustainability-0">-</span>
+          </div>
+          
+          <div id="error-message-0" class="error"></div>
+          <div id="success-message-0" class="success"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="chart-container">
+      <div class="chart-tabs">
+        <div class="chart-tab-button active" onclick="switchChartTab('portfolio')">Portfolio Value</div>
+        <div class="chart-tab-button" onclick="switchChartTab('income')">Monthly Income</div>
+      </div>
+      <canvas id="investment-chart"></canvas>
+    </div>
+  </div>
+</body>
+</html>
