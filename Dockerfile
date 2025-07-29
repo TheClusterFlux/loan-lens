@@ -2,8 +2,8 @@
 FROM nginx:alpine
 
 # Copy our static files to the web server's directory
-COPY index.html /usr/share/nginx/html/
-COPY app.js /usr/share/nginx/html/
+COPY *.html /usr/share/nginx/html/
+COPY *.js /usr/share/nginx/html/
 
 # Expose port 8080 to match the K8s configuration
 EXPOSE 8080
