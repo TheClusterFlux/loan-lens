@@ -96,6 +96,16 @@ document.addEventListener('DOMContentLoaded', function() {
           title: {
             display: true,
             text: 'Months'
+          },
+          ticks: {
+            stepSize: 12, // Show every year (12 months)
+            callback: function(value, index, values) {
+              // Convert months to years for cleaner display
+              if (value % 12 === 0) {
+                return Math.floor(value / 12) + ' yr';
+              }
+              return '';
+            }
           }
         },
         y: {

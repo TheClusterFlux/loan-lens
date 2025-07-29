@@ -65,23 +65,28 @@ function calculateInvestmentPlan(targetMonthlyIncome, targetDate, annualReturn, 
   const timeLabels = [];
   let currentPortfolio = initialInvestment;
   
-  // Investment phase
+  // Investment phase - generate data every month but labels more sparsely
   for (let month = 0; month <= monthsToTarget; month++) {
     portfolioValues.push(currentPortfolio);
     monthlyIncomes.push(currentPortfolio * (withdrawalRate / 100) / 12);
     
-    // Generate time labels
-    const currentTime = new Date(currentDate);
-    currentTime.setMonth(currentTime.getMonth() + month);
-    
-    if (birthDate) {
-      // Calculate age
-      const birth = new Date(birthDate);
-      const age = Math.floor((currentTime - birth) / (1000 * 60 * 60 * 24 * 365.25));
-      timeLabels.push(age);
+    // Generate time labels - but only every 6 months for cleaner display
+    if (month % 6 === 0 || month === monthsToTarget) {
+      const currentTime = new Date(currentDate);
+      currentTime.setMonth(currentTime.getMonth() + month);
+      
+      if (birthDate) {
+        // Calculate age
+        const birth = new Date(birthDate);
+        const age = Math.floor((currentTime - birth) / (1000 * 60 * 60 * 24 * 365.25));
+        timeLabels.push(age);
+      } else {
+        // Use date - only whole years
+        timeLabels.push(currentTime.getFullYear());
+      }
     } else {
-      // Use date
-      timeLabels.push(currentTime.getFullYear() + (currentTime.getMonth() < 6 ? '' : '.5'));
+      // Add empty label for data points without labels
+      timeLabels.push('');
     }
     
     if (month < monthsToTarget) {
@@ -112,18 +117,23 @@ function calculateInvestmentPlan(targetMonthlyIncome, targetDate, annualReturn, 
     // During withdrawal phase, monthly income is the current withdrawal amount (until portfolio depletes)
     monthlyIncomes.push(currentPortfolio > 0 ? currentMonthlyWithdrawal : 0);
     
-    // Generate time labels for withdrawal phase
-    const currentTime = new Date(target);
-    currentTime.setMonth(currentTime.getMonth() + month);
-    
-    if (birthDate) {
-      // Calculate age
-      const birth = new Date(birthDate);
-      const age = Math.floor((currentTime - birth) / (1000 * 60 * 60 * 24 * 365.25));
-      timeLabels.push(age);
+    // Generate time labels for withdrawal phase - every 6 months for cleaner display
+    if (month % 6 === 0 || month === withdrawalMonths || currentPortfolio <= 0) {
+      const currentTime = new Date(target);
+      currentTime.setMonth(currentTime.getMonth() + month);
+      
+      if (birthDate) {
+        // Calculate age
+        const birth = new Date(birthDate);
+        const age = Math.floor((currentTime - birth) / (1000 * 60 * 60 * 24 * 365.25));
+        timeLabels.push(age);
+      } else {
+        // Use date - only whole years
+        timeLabels.push(currentTime.getFullYear());
+      }
     } else {
-      // Use date
-      timeLabels.push(currentTime.getFullYear() + (currentTime.getMonth() < 6 ? '' : '.5'));
+      // Add empty label for data points without labels
+      timeLabels.push('');
     }
     
     // Track actual sustainability
@@ -217,7 +227,15 @@ document.addEventListener('DOMContentLoaded', function() {
         x: {
           title: {
             display: true,
-            text: 'Months'
+            text: 'Timeline'
+          },
+          ticks: {
+            maxTicksLimit: 15, // Limit number of ticks for cleaner display
+            callback: function(value, index, values) {
+              const label = this.getLabelForValue(value);
+              // Only show non-empty labels
+              return label !== '' ? label : '';
+            }
           }
         },
         y: {
