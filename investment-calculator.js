@@ -199,6 +199,14 @@ document.addEventListener('DOMContentLoaded', function() {
       responsive: true,
       maintainAspectRatio: false,
       animation: false,
+      layout: {
+        padding: {
+          top: 10,
+          bottom: 20,
+          left: 10,
+          right: 10
+        }
+      },
       plugins: {
         legend: {
           position: 'top',
