@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>About You</title>
+  <script src="common.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Roboto', sans-serif; margin:0; padding:0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height:100vh; color:#333; }
+    .container { max-width: 1100px; margin: 0 auto; padding: 40px 20px; }
+    header { text-align: center; padding: 40px 0; display:flex; justify-content: space-between; align-items:center; color:white; flex-wrap:wrap; gap:20px; }
+    .header-left { flex:1; min-width:120px; }
+    .header-center { flex:2; text-align:center; min-width:250px; }
+    .header-right { flex:1; text-align:right; min-width:120px; }
+    .back-button { background: rgba(255,255,255,0.2); color:white; text-decoration:none; padding:12px 20px; border-radius:8px; font-size:14px; font-weight:500; transition: all .3s ease; backdrop-filter: blur(10px); border:1px solid rgba(255,255,255,.3); }
+    .back-button:hover { background: rgba(255,255,255,.3); transform: translateY(-2px); box-shadow: 0 4px 15px rgba(0,0,0,.2); }
+    h1 { color:white; margin:0; font-size:2.2em; font-weight:300; }
+    .subtitle { color: rgba(255,255,255,0.9); font-weight:300; font-size:1.05em; margin-top:10px; }
+    .panel { background: rgba(255,255,255,.95); border-radius:12px; box-shadow: 0 8px 25px rgba(0,0,0,.15); padding:24px; backdrop-filter: blur(10px); margin-bottom:24px; }
+    .grid-2 { display:grid; grid-template-columns: 1fr 1fr; gap:20px; }
+    @media (max-width: 768px){ .grid-2 { grid-template-columns: 1fr; } }
+    .section-title { font-size:14px; font-weight:600; color:#1976d2; margin-bottom:12px; text-transform:uppercase; letter-spacing:.5px; }
+    .row { display:flex; justify-content: space-between; padding:8px 0; border-bottom:1px solid #eee; }
+    .row:last-child { border-bottom:none; }
+    .label { color:#555; font-weight:500; }
+    .value { color:#333; font-weight:700; }
+    label { display:block; margin-bottom:5px; font-weight:500; color:#555; }
+    input { width:100%; padding:10px; border:1px solid #ddd; border-radius:4px; font-size:16px; }
+    input:focus { outline:none; border-color:#1976d2; box-shadow:0 0 0 2px rgba(25,118,210,0.2); }
+    details { margin-top: 12px; }
+    summary { cursor:pointer; font-weight:600; }
+    pre { background:#f7f7f7; padding:14px; border-radius:8px; overflow:auto; max-height:300px; }
+
+    /* Summary stat cards */
+    .stat-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:16px; margin-top:8px; }
+    .stat-card { background:#ffffff; border-radius:10px; box-shadow: 0 6px 18px rgba(0,0,0,.12); padding:16px; position:relative; overflow:hidden; }
+    .stat-card .stat-icon { font-size:22px; opacity:.9; margin-bottom:8px; }
+    .stat-card .stat-title { font-size:12px; letter-spacing:.5px; text-transform:uppercase; color:#546e7a; font-weight:600; }
+    .stat-card .stat-value { font-size:24px; font-weight:800; margin-top:6px; color:#263238; }
+    .accent-blue::before, .accent-green::before, .accent-orange::before, .accent-purple::before, .accent-red::before { content:""; position:absolute; inset:0; opacity:.08; }
+    .accent-blue::before { background: linear-gradient(135deg, #42a5f5, #1e88e5); }
+    .accent-green::before { background: linear-gradient(135deg, #66bb6a, #43a047); }
+    .accent-orange::before { background: linear-gradient(135deg, #ffa726, #fb8c00); }
+    .accent-purple::before { background: linear-gradient(135deg, #ab47bc, #8e24aa); }
+    .accent-red::before { background: linear-gradient(135deg, #ef5350, #e53935); }
+    .danger-text { color:#e53935 !important; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="header-left"><a href="index.html" class="back-button">← Back to Suite</a></div>
+      <div class="header-center">
+        <h1>About You</h1>
+        <p class="subtitle">A summary of your loans and investments based on saved data</p>
+      </div>
+      <div class="header-right"></div>
+    </header>
+
+    <div class="panel">
+      <div class="section-title">Profile</div>
+      <div class="grid-2">
+        <div>
+          <label for="user-dob">Date of Birth</label>
+          <input type="date" id="user-dob">
+        </div>
+        <div>
+          <label for="user-income">Monthly Income (after tax)</label>
+          <input type="number" id="user-income" min="0" placeholder="e.g., 6000">
+        </div>
+        <div>
+          <label for="currency-code">Currency</label>
+          <select id="currency-code" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;">
+            <option value="USD">USD ($)</option>
+            <option value="EUR">EUR (€)</option>
+            <option value="ZAR">ZAR (R)</option>
+          </select>
+        </div>
+        
+        <div>
+          <label for="retire-age">Planned Retirement Age</label>
+          <input type="number" id="retire-age" min="40" max="100" placeholder="e.g., 65">
+        </div>
+        <div>
+          <label for="notes">Notes</label>
+          <input type="text" id="notes" placeholder="Optional">
+        </div>
+        <div>
+          <label for="risk-tolerance">Risk Tolerance</label>
+          <select id="risk-tolerance" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;">
+            <option>Moderate</option>
+            <option>Conservative</option>
+            <option>Aggressive</option>
+          </select>
+        </div>
+        <div>
+          <label for="expected-return-default">Default Expected Return (%)</label>
+          <input type="number" id="expected-return-default" min="0" max="50" step="0.1" placeholder="(optional)">
+        </div>
+        <div>
+          <label for="inflation-default">Default Inflation (%)</label>
+          <input type="number" id="inflation-default" min="0" max="10" step="0.1" placeholder="(optional)">
+        </div>
+        <div>
+          <label for="swr-default">Default Safe Withdrawal Rate (%)</label>
+          <input type="number" id="swr-default" min="1" max="10" step="0.1" placeholder="(optional)">
+        </div>
+        <div>
+          <label for="tax-bracket">Tax Bracket (%)</label>
+          <input type="number" id="tax-bracket" min="0" max="60" step="0.1" placeholder="(optional)">
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="section-title">Summary</div>
+      <div class="stat-grid">
+        <div class="stat-card accent-blue">
+          <div class="stat-icon">🎂</div>
+          <div class="stat-title">Current Age</div>
+          <div class="stat-value" id="sum-age">-</div>
+        </div>
+        <div class="stat-card accent-purple">
+          <div class="stat-icon">🧾</div>
+          <div class="stat-title">Number of Loans</div>
+          <div class="stat-value" id="sum-loans">-</div>
+        </div>
+        <div class="stat-card accent-orange">
+          <div class="stat-icon">💳</div>
+          <div class="stat-title">Total Loan Balance</div>
+          <div class="stat-value" id="sum-loan-balance">-</div>
+        </div>
+        <div class="stat-card accent-blue">
+          <div class="stat-icon">📉</div>
+          <div class="stat-title">Total Loan Monthly Payments</div>
+          <div class="stat-value" id="sum-loan-monthly">-</div>
+        </div>
+        <div class="stat-card accent-green">
+          <div class="stat-icon">🎯</div>
+          <div class="stat-title">Target Portfolio Value</div>
+          <div class="stat-value" id="sum-target-portfolio">-</div>
+        </div>
+        <div class="stat-card accent-green">
+          <div class="stat-icon">📈</div>
+          <div class="stat-title">Monthly Investment Needed</div>
+          <div class="stat-value" id="sum-monthly-invest">-</div>
+        </div>
+        <div class="stat-card accent-red">
+          <div class="stat-icon">💸</div>
+          <div class="stat-title">Total Monthly Outflow</div>
+          <div class="stat-value" id="sum-monthly-outflow">-</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="section-title">Stored Data</div>
+      <button onclick="Common.clearAllData()" style="margin-bottom:10px;background:#f44336;color:#fff;border:none;border-radius:6px;padding:10px 14px;cursor:pointer;">Clear All Data</button>
+      <details>
+        <summary>Show raw saved data</summary>
+        <pre id="raw-data">{}</pre>
+      </details>
+    </div>
+  </div>
+
+  <script>
+    function currency(v){ return new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(v||0); }
+    function num(v){ return Number(v)||0; }
+
+    function readLoanLens(){
+      try{ return JSON.parse(localStorage.getItem('loanLensState'))||null; }catch(e){ return null; }
+    }
+    function readInvestTarget(){
+      try{ return JSON.parse(localStorage.getItem('investmentTargetState'))||null; }catch(e){ return null; }
+    }
+    function readInvestPlanner(){
+      try{ return JSON.parse(localStorage.getItem('investmentPlannerState'))||null; }catch(e){ return null; }
+    }
+    function readProfile(){
+      try{ return JSON.parse(localStorage.getItem('aboutYouProfile'))||null; }catch(e){ return null; }
+    }
+    function saveProfile(p){
+      try{ localStorage.setItem('aboutYouProfile', JSON.stringify(p)); }catch(e){}
+    }
+
+    function computeLoanSummary(loan){
+      if(!loan || !Array.isArray(loan.tabs)) return { count:0, totalMonthly:0, currentBalance:0 };
+      let count = loan.tabs.length;
+      let totalMonthly = 0;
+      let currentBalance = 0;
+      loan.tabs.forEach(t => {
+        totalMonthly += num(t.monthlyPayment);
+        // use first balance value if available in results to approximate current principal
+        // if not present, fall back to entered principal
+        currentBalance += num(t.principal);
+      });
+      return { count, totalMonthly, currentBalance };
+    }
+
+    function computeInvestTargetSummary(inv){
+      if(!inv || !Array.isArray(inv.scenarios)) return { targetPortfolio:0, monthlyInvest:0 };
+      // Choose the active scenario if possible
+      const idx = typeof inv.activeIndex === 'number' ? Math.min(Math.max(0, inv.activeIndex), inv.scenarios.length-1) : 0;
+      const s = inv.scenarios[idx] || {};
+      // Prefer saved result summary if present
+      const requiredPortfolio = s.result?.requiredPortfolio || 0;
+      const monthlyInvestment = s.result?.monthlyInvestmentNeeded || 0;
+      return { targetPortfolio: requiredPortfolio, monthlyInvest: monthlyInvestment };
+    }
+
+    function computeInvestPlannerSummary(plan){
+      if(!plan || !Array.isArray(plan.rules)) return { monthlyInvest: 0 };
+      // Approximate monthly investments as sum of monthly rules only
+      const monthly = plan.rules
+        .filter(r => r.type === 'recurring' && r.frequency === 'monthly')
+        .reduce((sum, r) => sum + num(r.amount), 0);
+      return { monthlyInvest: monthly };
+    }
+
+    function loadAll(){
+      const loan = readLoanLens();
+      const inv = readInvestTarget();
+      const plan = readInvestPlanner();
+      const profile = readProfile() || {};
+
+      // Populate profile inputs
+      document.getElementById('user-dob').value = profile.dateOfBirth || '';
+      document.getElementById('user-income').value = profile.income || '';
+      document.getElementById('currency-code').value = profile.currencyCode || (Common.DEFAULTS.currencyCode);
+      
+      document.getElementById('retire-age').value = profile.retireAge || '';
+      document.getElementById('notes').value = profile.notes || '';
+      document.getElementById('risk-tolerance').value = profile.riskTolerance || 'Moderate';
+      document.getElementById('expected-return-default').value = profile.expectedReturnDefault != null ? profile.expectedReturnDefault : '';
+      document.getElementById('inflation-default').value = profile.inflationDefault != null ? profile.inflationDefault : '';
+      document.getElementById('swr-default').value = profile.swrDefault != null ? profile.swrDefault : '';
+      document.getElementById('tax-bracket').value = profile.taxBracket != null ? profile.taxBracket : '';
+
+      // Compute summaries
+      const loanSum = computeLoanSummary(loan);
+      const invSum = computeInvestTargetSummary(inv);
+      const planSum = computeInvestPlannerSummary(plan);
+
+      const totalMonthlyOutflow = loanSum.totalMonthly + Math.max(invSum.monthlyInvest, planSum.monthlyInvest);
+
+      // Compute current age from DOB
+      const ageYears = (function(dob){
+        if (!dob) return null;
+        const d = new Date(dob);
+        if (isNaN(d.getTime())) return null;
+        const now = new Date();
+        let years = now.getFullYear() - d.getFullYear();
+        const m = now.getMonth() - d.getMonth();
+        if (m < 0 || (m === 0 && now.getDate() < d.getDate())) years--;
+        return years;
+      })(profile.dateOfBirth);
+
+      // Render
+      document.getElementById('sum-age').textContent = ageYears != null ? ageYears : '-';
+      document.getElementById('sum-loans').textContent = loanSum.count;
+      document.getElementById('sum-loan-balance').textContent = currency(loanSum.currentBalance);
+      document.getElementById('sum-loan-monthly').textContent = currency(loanSum.totalMonthly);
+      document.getElementById('sum-target-portfolio').textContent = currency(invSum.targetPortfolio);
+      document.getElementById('sum-monthly-invest').textContent = currency(Math.max(invSum.monthlyInvest, planSum.monthlyInvest));
+      document.getElementById('sum-monthly-outflow').textContent = currency(totalMonthlyOutflow);
+
+      const raw = {
+        profile,
+        loanLensState: loan,
+        investmentTargetState: inv,
+        investmentPlannerState: plan
+      };
+      document.getElementById('raw-data').textContent = JSON.stringify(raw, null, 2);
+    }
+
+    // Save profile on input changes
+    function hookupProfileSaves(){
+      ['user-dob','user-income','currency-code','retire-age','notes','risk-tolerance','expected-return-default','inflation-default','swr-default','tax-bracket'].forEach(id => {
+        document.getElementById(id).addEventListener('input', () => {
+          const p = {
+            dateOfBirth: document.getElementById('user-dob').value || '',
+            income: num(document.getElementById('user-income').value),
+            currencyCode: document.getElementById('currency-code').value || Common.DEFAULTS.currencyCode,
+            retireAge: num(document.getElementById('retire-age').value),
+            notes: document.getElementById('notes').value || '',
+            riskTolerance: document.getElementById('risk-tolerance').value || 'Moderate',
+            expectedReturnDefault: document.getElementById('expected-return-default').value === '' ? null : Number(document.getElementById('expected-return-default').value),
+            inflationDefault: document.getElementById('inflation-default').value === '' ? null : Number(document.getElementById('inflation-default').value),
+            swrDefault: document.getElementById('swr-default').value === '' ? null : Number(document.getElementById('swr-default').value),
+            taxBracket: document.getElementById('tax-bracket').value === '' ? null : Number(document.getElementById('tax-bracket').value)
+          };
+          saveProfile(p);
+        });
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', function(){
+      Common.initPrivacyBanner();
+      hookupProfileSaves();
+      loadAll();
+    });
+  </script>
+</body>
+</html>
+

@@ -55,6 +55,10 @@ document.addEventListener('DOMContentLoaded', function() {
   // Add event listeners to buttons
   document.getElementById('add-tab-btn').addEventListener('click', addNewTab);
   document.getElementById('duplicate-tab-btn').addEventListener('click', duplicateCurrentTab);
+  const removeBtn = document.getElementById('remove-tab-btn');
+  if (removeBtn) {
+    removeBtn.addEventListener('click', removeCurrentTab);
+  }
   
   // Initialize Chart.js
   const ctx = document.getElementById('loan-chart').getContext('2d');
@@ -89,10 +93,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 label += ': ';
               }
               if (context.parsed.y !== null) {
-                label += new Intl.NumberFormat('en-US', {
-                  style: 'currency',
-                  currency: 'USD'
-                }).format(context.parsed.y);
+                if (window.Common && Common.formatCurrency) {
+                  label += Common.formatCurrency(context.parsed.y);
+                } else {
+                  label += '$' + (Math.round(context.parsed.y)).toLocaleString();
+                }
               }
               return label;
             }
@@ -123,11 +128,10 @@ document.addEventListener('DOMContentLoaded', function() {
           },
           ticks: {
             callback: function(value) {
-              return new Intl.NumberFormat('en-US', {
-                style: 'currency',
-                currency: 'USD',
-                maximumFractionDigits: 0
-              }).format(value);
+              if (window.Common && Common.formatCurrency) {
+                return Common.formatCurrency(value);
+              }
+              return '$' + (Math.round(value)).toLocaleString();
             }
           },
           // Set minimum value to 0 to prevent negative values
@@ -137,8 +141,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
   
-  // Add an initial tab
-  addNewTab();
+  // Load saved state or add an initial tab
+  loadLoanStateOrInit();
 });
 
 // Add a new tab
@@ -177,6 +181,7 @@ function addNewTab() {
   
   // Select the new tab
   selectTab(tabs.length - 1);
+  saveLoanState();
 }
 
 // Create the HTML for a new tab panel
@@ -254,6 +259,7 @@ function createTabPanel(tab) {
     if (index !== -1) {
       tabs[index].title = e.target.value;
       document.querySelector(`.tab-button[data-tab-id="${tab.id}"]`).textContent = e.target.value;
+      saveLoanState();
     }
   });
   
@@ -286,6 +292,7 @@ function createTabPanel(tab) {
         
         // Update calculation
         updateCalculation(tab.id);
+        saveLoanState();
       }
     }
   });
@@ -315,6 +322,8 @@ function selectTab(index) {
   
   const button = document.querySelector(`.tab-button[data-tab-id="${selectedTab.id}"]`);
   if (button) button.classList.add('active');
+  // Persist selected index
+  saveLoanState();
 }
 
 // Duplicate the current tab
@@ -367,6 +376,55 @@ function duplicateCurrentTab() {
   
   // Select the new tab
   selectTab(tabs.length - 1);
+  saveLoanState();
+}
+
+// Remove the current tab
+function removeCurrentTab() {
+  if (tabs.length === 0) return;
+  if (!confirm('Remove the selected loan? This cannot be undone.')) return;
+  const removed = tabs.splice(currentTabIndex, 1);
+  // Remove panel and button elements and rebuild
+  document.getElementById('tabs-container').innerHTML = '';
+  document.getElementById('tab-panels').innerHTML = '';
+  // Recreate all tabs/buttons/panels
+  const existing = [...tabs];
+  tabs = [];
+  existing.forEach((t, i) => {
+    const tabId = t.id || Date.now() + i;
+    const newTab = {
+      id: tabId,
+      title: t.title,
+      principal: t.principal,
+      interestRate: t.interestRate,
+      monthlyPayment: t.monthlyPayment,
+      deposits: t.deposits || {},
+      results: null
+    };
+    tabs.push(newTab);
+    const tabsContainer = document.getElementById('tabs-container');
+    const tabButton = document.createElement('button');
+    tabButton.className = 'tab-button';
+    tabButton.textContent = newTab.title;
+    tabButton.dataset.tabId = newTab.id;
+    const tabIndex = tabs.length - 1;
+    tabButton.addEventListener('click', () => selectTab(tabIndex));
+    tabsContainer.appendChild(tabButton);
+    const tabContent = createTabPanel(newTab);
+    document.getElementById('tab-panels').appendChild(tabContent);
+    // Fill values
+    tabContent.querySelector('.principal').value = newTab.principal;
+    tabContent.querySelector('.interest-rate').value = newTab.interestRate;
+    tabContent.querySelector('.monthly-payment').value = newTab.monthlyPayment;
+    updateDepositsList(tabContent, newTab.deposits);
+    // Compute results if possible
+    updateCalculation(newTab.id);
+  });
+  // Select a sensible tab index
+  currentTabIndex = Math.min(currentTabIndex, Math.max(0, tabs.length - 1));
+  selectTab(currentTabIndex);
+  updateChart();
+  saveLoanState();
 }
 
 // Update the deposits list in the UI
@@ -393,6 +451,7 @@ function updateDepositsList(panel, deposits) {
         delete tabs[index].deposits[month];
         updateDepositsList(panel, tabs[index].deposits);
         updateCalculation(parseInt(tabId));
+        saveLoanState();
       }
     });
   });
@@ -439,6 +498,8 @@ function updateCalculation(tabId) {
   
   // Update chart
   updateChart();
+  // Persist after recalculation
+  saveLoanState();
 }
 
 // Update the chart with data from all tabs
@@ -478,4 +539,78 @@ function getLineColor(index) {
     'rgb(153, 102, 255)' // purple
   ];
   return colors[index % colors.length];
+}
+
+// Persistence helpers
+function saveLoanState() {
+  try {
+    const state = {
+      tabs: tabs.map(t => ({
+        id: t.id,
+        title: t.title,
+        principal: t.principal,
+        interestRate: t.interestRate,
+        monthlyPayment: t.monthlyPayment,
+        deposits: t.deposits || {}
+      })),
+      selectedIndex: currentTabIndex
+    };
+    localStorage.setItem('loanLensState', JSON.stringify(state));
+  } catch (e) {
+    // ignore
+  }
+}
+
+function loadLoanStateOrInit() {
+  try {
+    const raw = localStorage.getItem('loanLensState');
+    if (!raw) {
+      addNewTab();
+      return;
+    }
+    const parsed = JSON.parse(raw);
+    if (!parsed || !Array.isArray(parsed.tabs) || parsed.tabs.length === 0) {
+      addNewTab();
+      return;
+    }
+    parsed.tabs.forEach((savedTab, i) => {
+      const tabId = savedTab.id || Date.now() + i;
+      const tabNumber = tabs.length + 1;
+      const newTab = {
+        id: tabId,
+        title: savedTab.title || `Loan ${tabNumber}`,
+        principal: Number(savedTab.principal) || 0,
+        interestRate: Number(savedTab.interestRate) || 0,
+        monthlyPayment: Number(savedTab.monthlyPayment) || 0,
+        deposits: savedTab.deposits || {},
+        results: null
+      };
+      tabs.push(newTab);
+
+      const tabsContainer = document.getElementById('tabs-container');
+      const tabButton = document.createElement('button');
+      tabButton.className = 'tab-button';
+      tabButton.textContent = newTab.title;
+      tabButton.dataset.tabId = tabId;
+      const tabIndex = tabs.length - 1;
+      tabButton.addEventListener('click', () => selectTab(tabIndex));
+      tabsContainer.appendChild(tabButton);
+
+      const tabContent = createTabPanel(newTab);
+      document.getElementById('tab-panels').appendChild(tabContent);
+
+      // Fill values
+      tabContent.querySelector('.principal').value = newTab.principal;
+      tabContent.querySelector('.interest-rate').value = newTab.interestRate;
+      tabContent.querySelector('.monthly-payment').value = newTab.monthlyPayment;
+      updateDepositsList(tabContent, newTab.deposits);
+
+      // Calculate to populate results
+      updateCalculation(tabId);
+    });
+    const sel = Math.min(Math.max(0, parsed.selectedIndex || 0), tabs.length - 1);
+    selectTab(sel);
+  } catch (e) {
+    addNewTab();
+  }
 }

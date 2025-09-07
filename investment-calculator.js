@@ -175,17 +175,23 @@ document.addEventListener('DOMContentLoaded', function() {
   defaultTargetDate.setFullYear(defaultTargetDate.getFullYear() + 10);
   document.getElementById('target-date-0').value = defaultTargetDate.toISOString().split('T')[0];
   
-  // Initialize scenarios array
-  scenarios = [{
-    id: 0,
-    name: 'Scenario 1',
-    targetIncome: 5000,
-    targetDate: defaultTargetDate.toISOString().split('T')[0],
-    annualReturn: 7,
-    initialInvestment: 0,
-    withdrawalRate: 4,
-    inflationRate: 2.5
-  }];
+  // Initialize scenarios array with saved state if present
+  const saved = loadInvestmentTargetState();
+  const profile = (function(){ try{ return JSON.parse(localStorage.getItem('aboutYouProfile'))||null; }catch(e){ return null; } })();
+  if (saved && Array.isArray(saved.scenarios) && saved.scenarios.length > 0) {
+    scenarios = [];
+  } else {
+    scenarios = [{
+      id: 0,
+      name: 'Scenario 1',
+      targetIncome: 5000,
+      targetDate: defaultTargetDate.toISOString().split('T')[0],
+      annualReturn: 7,
+      initialInvestment: 0,
+      withdrawalRate: 4,
+      inflationRate: 2.5
+    }];
+  }
   
   // Initialize Chart.js
   const ctx = document.getElementById('investment-chart').getContext('2d');
@@ -221,10 +227,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 label += ': ';
               }
               if (context.parsed.y !== null) {
-                label += new Intl.NumberFormat('en-US', {
-                  minimumFractionDigits: 0,
-                  maximumFractionDigits: 0
-                }).format(context.parsed.y);
+                if (window.Common && Common.formatNumber) {
+                  label += Common.formatNumber(context.parsed.y);
+                } else {
+                  label += (Math.round(context.parsed.y)).toLocaleString();
+                }
               }
               return label;
             }
@@ -253,10 +260,10 @@ document.addEventListener('DOMContentLoaded', function() {
           },
           ticks: {
             callback: function(value) {
-              return new Intl.NumberFormat('en-US', {
-                minimumFractionDigits: 0,
-                maximumFractionDigits: 0
-              }).format(value);
+              if (window.Common && Common.formatNumber) {
+                return Common.formatNumber(value);
+              }
+              return (Math.round(value)).toLocaleString();
             }
           }
         }
@@ -269,8 +276,55 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
   
-  // Initial calculation
-  calculateInvestment(0);
+  // If saved scenarios exist, rebuild UI from saved, else init default
+  if (saved && Array.isArray(saved.scenarios) && saved.scenarios.length > 0) {
+    // Initialize in-memory scenarios placeholders
+    scenarios = saved.scenarios.map((s, i) => ({ id: i, name: s.name || `Scenario ${i + 1}` }));
+    rebuildScenariosUI(saved.scenarios.length);
+    saved.scenarios.forEach((s, i) => {
+      // Set scenario name field
+      const nm = document.getElementById(`scenario-name-${i}`);
+      if (nm) nm.value = s.name || `Scenario ${i + 1}`;
+      document.getElementById(`target-income-${i}`).value = Number(s.targetIncome) || 0;
+      document.getElementById(`annual-return-${i}`).value = Number(s.annualReturn) || 0;
+      document.getElementById(`initial-investment-${i}`).value = Number(s.initialInvestment) || 0;
+      document.getElementById(`withdrawal-rate-${i}`).value = Number(s.withdrawalRate) || 4;
+      document.getElementById(`inflation-rate-${i}`).value = Number(s.inflationRate) || 2.5;
+      document.getElementById(`projection-years-${i}`).value = Number(s.projectionYears) || 50;
+      if (s.targetDate) {
+        toggleTargetMethod(i, 'date');
+        document.getElementById(`target-date-${i}`).value = s.targetDate;
+      } else if (s.birthDate && s.targetAge) {
+        toggleTargetMethod(i, 'age');
+        document.getElementById(`birth-date-${i}`).value = s.birthDate || (profile && profile.dateOfBirth ? profile.dateOfBirth : '');
+        document.getElementById(`target-age-${i}`).value = Number(s.targetAge) || (profile && profile.retireAge ? Number(profile.retireAge) : 65);
+      }
+      calculateInvestment(i);
+    });
+    const idx = typeof saved.activeIndex === 'number' ? Math.min(Math.max(0, saved.activeIndex), saved.scenarios.length - 1) : 0;
+    switchScenario(idx);
+  } else {
+    // Initial calculation
+    // Apply About You defaults for scenario 0 if available
+    if (profile && (profile.dateOfBirth || profile.retireAge)) {
+      // Default to age method if DOB or retireAge present
+      toggleTargetMethod(0, 'age');
+      if (profile.dateOfBirth) {
+        const dobEl = document.getElementById('birth-date-0');
+        if (dobEl) dobEl.value = profile.dateOfBirth;
+      }
+      if (profile.retireAge) {
+        const targEl = document.getElementById('target-age-0');
+        if (targEl) targEl.value = Number(profile.retireAge);
+      }
+    }
+    // Apply defaults from risk for returns/inflation/SWR
+    const defs = Common.getDefaultsFromRisk();
+    const rEl = document.getElementById('annual-return-0'); if (rEl && !rEl.value) rEl.value = defs.expectedReturn;
+    const infEl = document.getElementById('inflation-rate-0'); if (infEl && !infEl.value) infEl.value = defs.inflation;
+    const swrEl = document.getElementById('withdrawal-rate-0'); if (swrEl && !swrEl.value) swrEl.value = defs.swr;
+    calculateInvestment(0);
+  }
 });
 
 // Calculate investment for a specific scenario
@@ -373,6 +427,21 @@ function calculateInvestment(scenarioIndex) {
   
   // Update chart
   updateChart();
+  // Save state after calculation
+  saveInvestmentTargetState();
+  // Monthly income warning vs profile income
+  try {
+    const prof = Common.getProfile();
+    const income = Number(prof.income) || 0;
+    const lbl = document.getElementById(`success-message-${scenarioIndex}`);
+    if (income > 0 && scenarios[scenarioIndex]?.result?.monthlyInvestmentNeeded) {
+      const need = scenarios[scenarioIndex].result.monthlyInvestmentNeeded;
+      if (need > income) {
+        lbl.textContent = `Warning: Required monthly investment ${Common.formatCurrency(need)} exceeds your monthly income ${Common.formatCurrency(income)}.`;
+        lbl.style.color = '#f44336';
+      }
+    }
+  } catch(e){}
 }
 
 // Update chart with all scenarios
@@ -497,196 +566,193 @@ function addScenario() {
     withdrawalRate: 4,
     inflationRate: 2.5
   });
-  
-  // Add tab button
-  const tabsContainer = document.querySelector('.scenario-tabs');
-  const addButton = tabsContainer.querySelector('.add-scenario-btn');
-  
-  const newTab = document.createElement('div');
-  newTab.className = 'tab-button';
-  newTab.textContent = `Scenario ${newIndex + 1}`;
-  newTab.onclick = () => switchScenario(newIndex);
-  
-  tabsContainer.insertBefore(newTab, addButton);
-  
-  // Create new scenario panel
-  const newPanel = document.createElement('div');
-  newPanel.id = `scenario-${newIndex}`;
-  newPanel.className = 'scenario-panel';
-  newPanel.innerHTML = `
-    <div class="calculator-container">
-      <div class="input-panel">
-        <h3>Investment Parameters</h3>
-        
-        <!-- Goal Settings -->
-        <div class="form-section">
-          <div class="section-title">Goal Settings</div>
-          
-          <div class="form-group">
-            <div class="field-with-tooltip">
-              <label for="target-income-${newIndex}">Target Monthly Passive Income</label>
-              <div class="info-icon">i
-                <div class="tooltip">The amount of monthly income you want to receive from your investments without touching the principal. This is typically generated from dividends, interest, or systematic withdrawals.</div>
-              </div>
-            </div>
-            <input type="number" id="target-income-${newIndex}" min="0" step="100" value="5000" oninput="calculateInvestment(${newIndex})">
-          </div>
-          
-          <div class="form-group">
-            <div class="field-with-tooltip">
-              <label>Target Timeline</label>
-              <div class="info-icon">i
-                <div class="tooltip">Choose how you want to specify when you want to achieve your goal - either by selecting a specific date or by setting a target age.</div>
-              </div>
-            </div>
-            <div class="target-method-toggle">
-              <div class="toggle-button active" onclick="toggleTargetMethod(${newIndex}, 'date')">Target Date</div>
-              <div class="toggle-button" onclick="toggleTargetMethod(${newIndex}, 'age')">Target Age</div>
-            </div>
-            
-            <div class="date-inputs active" id="date-inputs-${newIndex}">
-              <label for="target-date-${newIndex}">Target Date</label>
-              <input type="date" id="target-date-${newIndex}" value="${defaultTargetDate.toISOString().split('T')[0]}" oninput="calculateInvestment(${newIndex})">
-            </div>
-            
-            <div class="age-inputs" id="age-inputs-${newIndex}">
-              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                <div>
-                  <label for="birth-date-${newIndex}">Date of Birth</label>
-                  <input type="date" id="birth-date-${newIndex}" oninput="calculateInvestment(${newIndex})">
-                </div>
-                <div>
-                  <label for="target-age-${newIndex}">Target Age</label>
-                  <input type="number" id="target-age-${newIndex}" min="18" max="100" value="65" oninput="calculateInvestment(${newIndex})">
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <!-- Investment Settings -->
-        <div class="form-section">
-          <div class="section-title">Investment Settings</div>
-          
-          <div class="form-grid">
-            <div class="form-group">
-              <div class="field-with-tooltip">
-                <label for="annual-return-${newIndex}">Expected Annual Return (%)</label>
-                <div class="info-icon">i
-                  <div class="tooltip">The average yearly return you expect from your investments. Historical stock market average is around 7-10%. Conservative estimates: 4-6%, Moderate: 6-8%, Aggressive: 8-12%.</div>
-                </div>
-              </div>
-              <input type="number" id="annual-return-${newIndex}" min="0" max="50" step="0.1" value="7" oninput="calculateInvestment(${newIndex})">
-            </div>
-            
-            <div class="form-group">
-              <div class="field-with-tooltip">
-                <label for="initial-investment-${newIndex}">Initial Investment</label>
-                <div class="info-icon">i
-                  <div class="tooltip">The amount of money you already have invested or plan to invest as a lump sum at the beginning. This can be 0 if you're starting from scratch.</div>
-                </div>
-              </div>
-              <input type="number" id="initial-investment-${newIndex}" min="0" step="1000" value="0" oninput="calculateInvestment(${newIndex})">
-            </div>
-          </div>
-        </div>
-        
-        <!-- Withdrawal & Risk Settings -->
-        <div class="form-section">
-          <div class="section-title">Withdrawal & Risk Settings</div>
-          
-          <div class="form-grid">
-            <div class="form-group">
-              <div class="field-with-tooltip">
-                <label for="withdrawal-rate-${newIndex}">Safe Withdrawal Rate (%)</label>
-                <div class="info-icon">i
-                  <div class="tooltip">The percentage of your portfolio you can safely withdraw annually without depleting it. The classic "4% rule" suggests 4% is sustainable long-term. More conservative: 3-3.5%, More aggressive: 4.5-5%.</div>
-                </div>
-              </div>
-              <input type="number" id="withdrawal-rate-${newIndex}" min="1" max="10" step="0.1" value="4" oninput="calculateInvestment(${newIndex})">
-            </div>
-            
-            <div class="form-group">
-              <div class="field-with-tooltip">
-                <label for="inflation-rate-${newIndex}">Expected Inflation Rate (%)</label>
-                <div class="info-icon">i
-                  <div class="tooltip">The expected annual inflation rate to maintain purchasing power. Historical US average is around 2-3%. This adjusts your target income for inflation, so 5,000 today will have the same buying power as the inflated amount in the target year.</div>
-                </div>
-              </div>
-              <input type="number" id="inflation-rate-${newIndex}" min="0" max="10" step="0.1" value="2.5" oninput="calculateInvestment(${newIndex})">
-            </div>
-          </div>
-        </div>
-        
-        <!-- Chart Settings -->
-        <div class="form-section">
-          <div class="section-title">Chart Settings</div>
-          
-          <div class="form-group">
-            <div class="field-with-tooltip">
-              <label for="projection-years-${newIndex}">Projection Period (Years)</label>
-              <div class="info-icon">i
-                <div class="tooltip">How many years beyond your target date to show in the chart. This helps visualize long-term portfolio sustainability during retirement. Default is 50 years or until age 100.</div>
-              </div>
-            </div>
-            <input type="number" id="projection-years-${newIndex}" min="10" max="70" step="5" value="50" oninput="calculateInvestment(${newIndex})">
-          </div>
-        </div>
-      </div>
-      
-      <div class="results-panel">
-        <h3>Investment Results</h3>
-        
-        <div class="result-item">
-          <span class="result-label">Required Portfolio Value:</span>
-          <span class="result-value" id="portfolio-value-${newIndex}">0</span>
-        </div>
-        
-        <div class="result-item">
-          <span class="result-label">Inflation-Adjusted Target Income:</span>
-          <span class="result-value" id="adjusted-income-${newIndex}">0</span>
-        </div>
-        
-        <div class="result-item">
-          <span class="result-label">Years to Target:</span>
-          <span class="result-value" id="years-to-target-${newIndex}">0</span>
-        </div>
-        
-        <div class="result-item">
-          <span class="result-label">Monthly Investment Needed:</span>
-          <span class="result-value highlight" id="monthly-investment-${newIndex}">0</span>
-        </div>
-        
-        <div class="result-item">
-          <span class="result-label">Total Invested:</span>
-          <span class="result-value" id="total-invested-${newIndex}">0</span>
-        </div>
-        
-        <div class="result-item">
-          <span class="result-label">Investment Growth:</span>
-          <span class="result-value" id="investment-growth-${newIndex}">0</span>
-        </div>
-        
-        <div class="result-item">
-          <span class="result-label">Portfolio Sustainability:</span>
-          <span class="result-value" id="portfolio-sustainability-${newIndex}">-</span>
-        </div>
-        
-        <div id="error-message-${newIndex}" class="error"></div>
-        <div id="success-message-${newIndex}" class="success"></div>
-      </div>
-    </div>
-  `;
-  
-  // Insert new panel after the last scenario panel
-  const lastPanel = document.querySelector(`#scenario-${newIndex - 1}`);
-  lastPanel.parentNode.insertBefore(newPanel, lastPanel.nextSibling);
-  
-  // Switch to new scenario
-  switchScenario(newIndex);
-  
-  // Calculate initial values
+  // Rebuild tabs/panels to ensure correct numbering and handlers
+  rebuildScenariosUI(scenarios.length);
+  // Set default values for the new scenario
+  const dateInput = document.getElementById(`target-date-${newIndex}`);
+  const dobEl = document.getElementById(`birth-date-${newIndex}`);
+  const targEl = document.getElementById(`target-age-${newIndex}`);
+  const nm = document.getElementById(`scenario-name-${newIndex}`);
+  if (nm) nm.value = `Scenario ${newIndex + 1}`;
+  if (dateInput) dateInput.value = defaultTargetDate.toISOString().split('T')[0];
+  if (profile && (profile.dateOfBirth || profile.retireAge)) {
+    // Prefer age method when profile available
+    toggleTargetMethod(newIndex, 'age');
+    if (dobEl && profile.dateOfBirth) dobEl.value = profile.dateOfBirth;
+    if (targEl && profile.retireAge) targEl.value = Number(profile.retireAge);
+  }
+  // Apply defaults from risk for returns/inflation/SWR
+  const defs = Common.getDefaultsFromRisk();
+  const rEl = document.getElementById(`annual-return-${newIndex}`); if (rEl && !rEl.value) rEl.value = defs.expectedReturn;
+  const infEl = document.getElementById(`inflation-rate-${newIndex}`); if (infEl && !infEl.value) infEl.value = defs.inflation;
+  const swrEl = document.getElementById(`withdrawal-rate-${newIndex}`); if (swrEl && !swrEl.value) swrEl.value = defs.swr;
   calculateInvestment(newIndex);
+  switchScenario(newIndex);
+  saveInvestmentTargetState();
+}
+
+// Remove current scenario
+function removeCurrentScenario() {
+  if (scenarios.length <= 1) {
+    alert('At least one scenario is required.');
+    return;
+  }
+  if (!confirm('Remove the current scenario?')) return;
+  const index = currentScenarioIndex;
+  scenarios.splice(index, 1);
+  // Rebuild UI based on new length
+  rebuildScenariosUI(scenarios.length);
+  // Recalculate each panel with existing DOM values
+  for (let i = 0; i < scenarios.length; i++) {
+    calculateInvestment(i);
+  }
+  // Select a valid index
+  currentScenarioIndex = Math.min(index, scenarios.length - 1);
+  switchScenario(currentScenarioIndex);
+  saveInvestmentTargetState();
+}
+
+// Helper: rebuild scenario tabs and panels to match count
+function rebuildScenariosUI(count) {
+  // Remove existing tabs (scenario buttons only)
+  document.querySelectorAll('.scenario-tabs .tab-button').forEach(el => el.remove());
+  // Remove existing panels
+  document.querySelectorAll('.scenario-panel').forEach(p => p.remove());
+  const tabsContainer = document.querySelector('.scenario-tabs');
+  const firstActionBtn = tabsContainer.querySelector('.add-scenario-btn');
+  const chartContainer = document.querySelector('.chart-container');
+  // Create tabs and panels
+  for (let i = 0; i < count; i++) {
+    if (scenarios[i]) {
+      scenarios[i].id = i;
+      scenarios[i].name = `Scenario ${i + 1}`;
+    }
+    // Tab
+    const tab = document.createElement('div');
+    tab.className = 'tab-button';
+    tab.textContent = scenarios[i]?.name || `Scenario ${i + 1}`;
+    tab.onclick = () => switchScenario(i);
+    tabsContainer.insertBefore(tab, firstActionBtn);
+    // Panel
+    const panel = document.createElement('div');
+    panel.id = `scenario-${i}`;
+    panel.className = 'scenario-panel' + (i === 0 ? ' active' : '');
+    panel.innerHTML = `
+      <div class="calculator-container">
+        <div class="input-panel">
+          <h3>Investment Parameters</h3>
+          <div class="form-section">
+            <div class="section-title">Scenario</div>
+            <div class="form-group">
+              <label for="scenario-name-${i}">Scenario Name</label>
+              <input type="text" id="scenario-name-${i}" value="${scenarios[i]?.name || `Scenario ${i + 1}`}" oninput="renameScenario(${i}, this.value)">
+            </div>
+          </div>
+          <div class="form-section">
+            <div class="section-title">Goal Settings</div>
+            <div class="form-group">
+              <div class="field-with-tooltip">
+                <label for="target-income-${i}">Target Monthly Passive Income (pre tax)</label>
+                <div class="info-icon">i
+                  <div class="tooltip">The amount of monthly income you want to receive from your investments without touching the principal.</div>
+                </div>
+              </div>
+              <input type="number" id="target-income-${i}" min="0" step="100" value="5000" oninput="calculateInvestment(${i})">
+            </div>
+            <div class="form-group">
+              <div class="field-with-tooltip">
+                <label>Target Timeline</label>
+                <div class="info-icon">i
+                  <div class="tooltip">Choose how you want to specify when you want to achieve your goal.</div>
+                </div>
+              </div>
+              <div class="target-method-toggle">
+                <div class="toggle-button active" onclick="toggleTargetMethod(${i}, 'date')">Target Date</div>
+                <div class="toggle-button" onclick="toggleTargetMethod(${i}, 'age')">Target Age</div>
+              </div>
+              <div class="date-inputs active" id="date-inputs-${i}">
+                <label for="target-date-${i}">Target Date</label>
+                <input type="date" id="target-date-${i}" oninput="calculateInvestment(${i})">
+              </div>
+              <div class="age-inputs" id="age-inputs-${i}">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                  <div>
+                    <label for="birth-date-${i}">Date of Birth</label>
+                    <input type="date" id="birth-date-${i}" oninput="calculateInvestment(${i})">
+                  </div>
+                  <div>
+                    <label for="target-age-${i}">Target Age</label>
+                    <input type="number" id="target-age-${i}" min="18" max="100" value="65" oninput="calculateInvestment(${i})">
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="form-section">
+            <div class="section-title">Investment Settings</div>
+            <div class="form-grid">
+              <div class="form-group">
+                <div class="field-with-tooltip">
+                  <label for="annual-return-${i}">Expected Annual Return (%)</label>
+                  <div class="info-icon">i<div class="tooltip">Average yearly return you expect from investments.</div></div>
+                </div>
+                <input type="number" id="annual-return-${i}" min="0" max="50" step="0.1" value="7" oninput="calculateInvestment(${i})">
+              </div>
+              <div class="form-group">
+                <div class="field-with-tooltip">
+                  <label for="initial-investment-${i}">Initial Investment</label>
+                  <div class="info-icon">i<div class="tooltip">Amount you already have invested as a lump sum.</div></div>
+                </div>
+                <input type="number" id="initial-investment-${i}" min="0" step="1000" value="0" oninput="calculateInvestment(${i})">
+              </div>
+            </div>
+          </div>
+          <div class="form-section">
+            <div class="section-title">Withdrawal & Risk Settings</div>
+            <div class="form-grid">
+              <div class="form-group">
+                <div class="field-with-tooltip">
+                  <label for="withdrawal-rate-${i}">Safe Withdrawal Rate (%)</label>
+                  <div class="info-icon">i<div class="tooltip">Percentage of your portfolio you can withdraw annually.</div></div>
+                </div>
+                <input type="number" id="withdrawal-rate-${i}" min="1" max="10" step="0.1" value="4" oninput="calculateInvestment(${i})">
+              </div>
+              <div class="form-group">
+                <div class="field-with-tooltip">
+                  <label for="inflation-rate-${i}">Expected Inflation Rate (%)</label>
+                  <div class="info-icon">i<div class="tooltip">Expected annual inflation rate.</div></div>
+                </div>
+                <input type="number" id="inflation-rate-${i}" min="0" max="10" step="0.1" value="2.5" oninput="calculateInvestment(${i})">
+              </div>
+            </div>
+          </div>
+          <div class="form-section">
+            <div class="section-title">Chart Settings</div>
+            <div class="form-group">
+              <div class="field-with-tooltip">
+                <label for="projection-years-${i}">Projection Period (Years)</label>
+                <div class="info-icon">i<div class="tooltip">Years to show beyond target date.</div></div>
+              </div>
+              <input type="number" id="projection-years-${i}" min="10" max="70" step="5" value="50" oninput="calculateInvestment(${i})">
+            </div>
+          </div>
+        </div>
+        <div class="results-panel">
+          <h3>Investment Results</h3>
+          <div class="result-item"><span class="result-label">Required Portfolio Value:</span><span class="result-value" id="portfolio-value-${i}">0</span></div>
+          <div class="result-item"><span class="result-label">Inflation-Adjusted Target Income:</span><span class="result-value" id="adjusted-income-${i}">0</span></div>
+          <div class="result-item"><span class="result-label">Years to Target:</span><span class="result-value" id="years-to-target-${i}">0</span></div>
+          <div class="result-item"><span class="result-label">Monthly Investment Needed:</span><span class="result-value highlight" id="monthly-investment-${i}">0</span></div>
+          <div class="result-item"><span class="result-label">Total Invested:</span><span class="result-value" id="total-invested-${i}">0</span></div>
+          <div class="result-item"><span class="result-label">Investment Growth:</span><span class="result-value" id="investment-growth-${i}">0</span></div>
+          <div class="result-item"><span class="result-label">Portfolio Sustainability:</span><span class="result-value" id="portfolio-sustainability-${i}">-</span></div>
+          <div id="error-message-${i}" class="error"></div>
+          <div id="success-message-${i}" class="success"></div>
+        </div>
+      </div>
+    `;
+    chartContainer.parentNode.insertBefore(panel, chartContainer);
+  }
 }
 
 // Switch between scenarios
@@ -710,6 +776,37 @@ function switchScenario(index) {
   });
   
   currentScenarioIndex = index;
+  saveInvestmentTargetState();
+}
+
+// Rename scenario
+function renameScenario(index, newName) {
+  if (!scenarios[index]) return;
+  scenarios[index].name = newName || `Scenario ${index + 1}`;
+  // Update tab label
+  const tabs = document.querySelectorAll('.scenario-tabs .tab-button');
+  if (tabs[index]) tabs[index].textContent = scenarios[index].name;
+  saveInvestmentTargetState();
+}
+
+// Refresh scenario from About You profile defaults
+function refreshScenarioFromProfile() {
+  const i = currentScenarioIndex;
+  const prof = Common.getProfile();
+  const defs = Common.getDefaultsFromRisk();
+  if (prof.dateOfBirth) {
+    toggleTargetMethod(i, 'age');
+    const dobEl = document.getElementById(`birth-date-${i}`);
+    if (dobEl) dobEl.value = prof.dateOfBirth;
+  }
+  if (prof.retireAge) {
+    const ta = document.getElementById(`target-age-${i}`);
+    if (ta) ta.value = Number(prof.retireAge);
+  }
+  const rEl = document.getElementById(`annual-return-${i}`); if (rEl) rEl.value = defs.expectedReturn;
+  const infEl = document.getElementById(`inflation-rate-${i}`); if (infEl) infEl.value = defs.inflation;
+  const swrEl = document.getElementById(`withdrawal-rate-${i}`); if (swrEl) swrEl.value = defs.swr;
+  calculateInvestment(i);
 }
 
 // Toggle between date and age input methods
@@ -757,4 +854,48 @@ function switchChartTab(view) {
   
   // Update chart
   updateChart();
+  saveInvestmentTargetState();
+}
+
+// Persistence helpers for Investment Target Calculator
+function saveInvestmentTargetState() {
+  try {
+    const payload = {
+      version: 1,
+      activeIndex: currentScenarioIndex,
+      scenarios: scenarios.map((s, i) => ({
+        name: document.getElementById(`scenario-name-${i}`)?.value || s.name || `Scenario ${i + 1}`,
+        targetIncome: Number(document.getElementById(`target-income-${i}`)?.value) || s.targetIncome || 0,
+        targetDate: document.getElementById(`target-date-${i}`)?.value || s.targetDate || null,
+        birthDate: document.getElementById(`birth-date-${i}`)?.value || s.birthDate || null,
+        targetAge: Number(document.getElementById(`target-age-${i}`)?.value) || s.targetAge || null,
+        annualReturn: Number(document.getElementById(`annual-return-${i}`)?.value) || s.annualReturn || 0,
+        initialInvestment: Number(document.getElementById(`initial-investment-${i}`)?.value) || s.initialInvestment || 0,
+        withdrawalRate: Number(document.getElementById(`withdrawal-rate-${i}`)?.value) || s.withdrawalRate || 4,
+        inflationRate: Number(document.getElementById(`inflation-rate-${i}`)?.value) || s.inflationRate || 2.5,
+        projectionYears: Number(document.getElementById(`projection-years-${i}`)?.value) || s.projectionYears || 50,
+        // Store key result summaries for About You page
+        result: s.result ? {
+          requiredPortfolio: s.result.requiredPortfolio,
+          monthlyInvestmentNeeded: s.result.monthlyInvestmentNeeded,
+          inflationAdjustedIncome: s.result.inflationAdjustedIncome,
+          yearsToTarget: s.result.yearsToTarget
+        } : null
+      }))
+    };
+    localStorage.setItem('investmentTargetState', JSON.stringify(payload));
+  } catch (e) {}
+}
+
+function loadInvestmentTargetState() {
+  try {
+    const raw = localStorage.getItem('investmentTargetState');
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    // simple migration placeholder
+    if (!parsed.version) parsed.version = 1;
+    return parsed;
+  } catch (e) {
+    return null;
+  }
 }

@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Investment Target Calculator</title>
+  <script src="common.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.3.0/dist/chart.umd.min.js"></script>
   <script src="investment-calculator.js"></script>
@@ -477,6 +478,8 @@
 
     <div class="scenario-tabs">
       <div class="tab-button active" onclick="switchScenario(0)">Scenario 1</div>
+      <button class="add-scenario-btn" onclick="refreshScenarioFromProfile()" style="background: linear-gradient(45deg, #1976d2, #1565c0);">Refresh from About You</button>
+      <button class="add-scenario-btn" onclick="removeCurrentScenario()" style="background: linear-gradient(45deg, #f44336, #e53935);">Remove Scenario</button>
       <button class="add-scenario-btn" onclick="addScenario()">+ Add Scenario</button>
     </div>
 
@@ -484,6 +487,13 @@
       <div class="calculator-container">
         <div class="input-panel">
           <h3>Investment Parameters</h3>
+          <div class="form-section">
+            <div class="section-title">Scenario</div>
+            <div class="form-group">
+              <label for="scenario-name-0">Scenario Name</label>
+              <input type="text" id="scenario-name-0" value="Scenario 1" oninput="renameScenario(0, this.value)">
+            </div>
+          </div>
           
           <!-- Goal Settings -->
           <div class="form-section">

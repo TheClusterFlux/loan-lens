@@ -26,35 +26,32 @@ A powerful tool to help you plan your path to financial independence by calculat
 
 ## Technology Stack
 
-- **Frontend**: React with Material UI for a responsive, modern interface
-- **Backend**: Node.js with Express for API services and calculations
+- **App Type**: Static HTML/CSS with vanilla JavaScript (no Node/npm required)
 - **Visualization**: Chart.js for interactive graphs
-- **Deployment**: Containerized with Docker for easy deployment on Kubernetes
+- **Serving**: Any static web server (Nginx in Docker image)
+- **Deployment**: Containerized with Docker; Kubernetes manifest included
 
 ## Local Development
 
 ### Prerequisites
 
-- Node.js (version 16 or higher)
-- npm or yarn
+- Optional: Python 3 (for a simple local static server), or Docker
 
-### Running Locally
+### Running Locally (no build tools)
 
-1. **Start the backend server**:
-   ```
-   cd backend
-   npm install
-   npm start
-   ```
+Option A: Python http.server
+```
+cd <repo-root>
+python -m http.server 8080
+```
+Then open `http://localhost:8080/index.html`
 
-2. **Start the frontend development server**:
-   ```
-   cd frontend
-   npm install
-   npm start
-   ```
-
-3. Open your browser and navigate to `http://localhost:3000`
+Option B: Docker (Nginx)
+```
+docker build -t loan-lens .
+docker run --rm -p 8080:8080 loan-lens
+```
+Then open `http://localhost:8080/index.html`
 
 ## Deployment
 
@@ -87,6 +84,15 @@ The application is automatically deployed to the Kubernetes cluster via GitHub A
 4. **Configure investment parameters**: Set expected annual returns, initial investment, and withdrawal rate
 5. **Add scenarios**: Create multiple scenarios to compare different strategies
 6. **Analyze results**: View required monthly investments and portfolio growth projections
+
+### Investment Planner
+1. **Open the planner**: Navigate to `investment-planner.html`
+2. **Set general settings**: Initial investment, expected annual return, inflation rate, projection length
+3. **Add contribution rules**:
+   - Recurring: amount, frequency (monthly/quarterly/annual), start month, optional end month
+   - One-time: a single contribution at a specific month
+4. **Adjust for inflation**: Toggle to view values in today's dollars (real terms)
+5. **Review visualization**: Portfolio value vs cumulative contributions over time and summary metrics
 
 ## License
 
