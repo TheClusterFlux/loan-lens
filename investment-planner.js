@@ -6,7 +6,7 @@ let plannerState = {
   inflationRate: 2.5,
   projectionYears: 40,
   adjustForInflation: false,
-  rules: [], // { id, type: 'recurring'|'one-time', label, amount, startMonth, endMonth?, frequency? }
+  rules: [], // { id, type, label, amount, startMonth, endMonth?, frequency?, growthPctPerYear?, adjustForInflationRule? }
   editingRuleId: null
 };
 
@@ -46,6 +46,8 @@ document.addEventListener('DOMContentLoaded', function() {
       frequencyGroup.style.display = '';
       endMonthGroup.style.display = '';
     }
+    // Live preview while editing
+    recalcAndRender();
   });
 
   document.getElementById('add-rule').addEventListener('click', () => upsertRuleFromForm());
@@ -54,6 +56,7 @@ document.addEventListener('DOMContentLoaded', function() {
     clearRuleForm();
     plannerState.editingRuleId = null;
     cancelBtn.style.display = 'none';
+    recalcAndRender();
   });
 
   const clearBtn = document.getElementById('clear-data');
@@ -134,6 +137,14 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('adjust-inflation').checked = plannerState.adjustForInflation === true;
   renderRules();
   recalcAndRender();
+
+  // Hook live preview for rule form inputs
+  ['rule-label','rule-amount','rule-growth','rule-start','rule-frequency','rule-end','rule-adjust-inflation'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const evt = id === 'rule-frequency' || id === 'rule-adjust-inflation' ? 'change' : 'input';
+    el.addEventListener(evt, () => recalcAndRender());
+  });
 });
 
 function renderRules() {
@@ -180,6 +191,7 @@ function startEditRule(ruleId, displayNumber) {
   document.getElementById('rule-type').value = rule.type;
   document.getElementById('rule-label').value = rule.label || '';
   document.getElementById('rule-amount').value = rule.amount;
+  document.getElementById('rule-growth').value = rule.growthPctPerYear != null ? rule.growthPctPerYear : 0;
   document.getElementById('rule-start').value = rule.startMonth;
   const frequencyGroup = document.getElementById('frequency-group');
   const endMonthGroup = document.getElementById('end-month-group');
@@ -193,6 +205,7 @@ function startEditRule(ruleId, displayNumber) {
     endMonthGroup.style.display = 'none';
     document.getElementById('rule-end').value = '';
   }
+  document.getElementById('rule-adjust-inflation').checked = !!rule.adjustForInflationRule;
   document.getElementById('cancel-edit').style.display = '';
   setEditIndicator(displayNumber || 1);
   setAddButtonEditing(true);
@@ -202,15 +215,17 @@ function upsertRuleFromForm() {
   const type = document.getElementById('rule-type').value;
   const label = (document.getElementById('rule-label').value || '').trim() || (type === 'recurring' ? 'Recurring' : 'One-time');
   const amount = Math.max(0, parseFloat(document.getElementById('rule-amount').value) || 0);
+  const growthPctPerYear = Math.max(0, parseFloat(document.getElementById('rule-growth').value) || 0);
   const startMonth = Math.max(1, parseInt(document.getElementById('rule-start').value) || 1);
   const frequency = document.getElementById('rule-frequency').value;
   const endVal = document.getElementById('rule-end').value;
   const endMonth = endVal ? Math.max(startMonth, parseInt(endVal)) : undefined;
+  const adjustForInflationRule = !!document.getElementById('rule-adjust-inflation').checked;
 
   if (plannerState.editingRuleId) {
     const idx = plannerState.rules.findIndex(r => r.id === plannerState.editingRuleId);
     if (idx !== -1) {
-      const updated = { ...plannerState.rules[idx], type, label, amount, startMonth };
+      const updated = { ...plannerState.rules[idx], type, label, amount, startMonth, growthPctPerYear, adjustForInflationRule };
       if (type === 'recurring') {
         updated.frequency = frequency;
         if (endMonth) updated.endMonth = endMonth; else delete updated.endMonth;
@@ -225,7 +240,7 @@ function upsertRuleFromForm() {
     setEditIndicator(null);
     setAddButtonEditing(false);
   } else {
-    const rule = { id: Date.now(), type, label, amount, startMonth };
+    const rule = { id: Date.now(), type, label, amount, startMonth, growthPctPerYear, adjustForInflationRule };
     if (type === 'recurring') {
       rule.frequency = frequency; // monthly|quarterly|annual
       if (endMonth) rule.endMonth = endMonth;
@@ -241,9 +256,11 @@ function clearRuleForm() {
   document.getElementById('rule-type').value = 'recurring';
   document.getElementById('rule-label').value = '';
   document.getElementById('rule-amount').value = 500;
+  document.getElementById('rule-growth').value = 0;
   document.getElementById('rule-start').value = 1;
   document.getElementById('rule-frequency').value = 'monthly';
   document.getElementById('rule-end').value = '';
+  document.getElementById('rule-adjust-inflation').checked = false;
   document.getElementById('frequency-group').style.display = '';
   document.getElementById('end-month-group').style.display = '';
 }
@@ -271,16 +288,41 @@ function recalcAndRender() {
 
   // Precompute monthly contributions per month
   const monthlyContrib = new Array(months).fill(0);
-  plannerState.rules.forEach(rule => {
+  const rulesForCalc = getEffectiveRulesForCalc();
+  rulesForCalc.forEach(rule => {
     if (rule.type === 'one-time') {
       const idx = clampToRange(rule.startMonth - 1, 0, months - 1);
-      monthlyContrib[idx] += rule.amount;
+      let amt = rule.amount;
+      // Apply per-rule inflation adjustment and growth factor to the month it's applied
+      if (rule.adjustForInflationRule) {
+        // Inflate from rule's start month horizon (0 at rule month)
+        const monthlyInfl = (plannerState.inflationRate / 100) / 12;
+        const monthsSinceRuleStart = 0; // one-time occurs at its start, no compounding before
+        amt = amt * Math.pow(1 + monthlyInfl, monthsSinceRuleStart);
+      }
+      if (rule.growthPctPerYear && rule.growthPctPerYear > 0) {
+        const monthlyGrowth = (rule.growthPctPerYear / 100) / 12;
+        const monthsSinceRuleStart = 0; // no growth ramp-up prior to event
+        amt = amt * Math.pow(1 + monthlyGrowth, monthsSinceRuleStart);
+      }
+      monthlyContrib[idx] += amt;
     } else {
       const freqStep = rule.frequency === 'monthly' ? 1 : rule.frequency === 'quarterly' ? 3 : 12;
       const startIdx = clampToRange(rule.startMonth - 1, 0, months - 1);
       const endIdx = rule.endMonth ? clampToRange(rule.endMonth - 1, 0, months - 1) : months - 1;
       for (let m = startIdx; m <= endIdx; m += freqStep) {
-        monthlyContrib[m] += rule.amount;
+        let amt = rule.amount;
+        if (rule.adjustForInflationRule) {
+          const monthlyInfl = (plannerState.inflationRate / 100) / 12;
+          const monthsSinceRuleStart = m - startIdx; // inflation growth from rule start
+          amt = amt * Math.pow(1 + monthlyInfl, monthsSinceRuleStart);
+        }
+        if (rule.growthPctPerYear && rule.growthPctPerYear > 0) {
+          const monthlyGrowth = (rule.growthPctPerYear / 100) / 12;
+          const monthsSinceRuleStart = m - startIdx; // growth from rule inception
+          amt = amt * Math.pow(1 + monthlyGrowth, monthsSinceRuleStart);
+        }
+        monthlyContrib[m] += amt;
       }
     }
   });
@@ -375,3 +417,32 @@ function currency(v) {
 function clampToRange(v, min, max) { return Math.max(min, Math.min(max, v)); }
 
 
+// Build effective rules for live preview: if editing, replace that rule with form values
+function getEffectiveRulesForCalc() {
+  if (!plannerState.editingRuleId) return plannerState.rules.slice();
+  const idx = plannerState.rules.findIndex(r => r.id === plannerState.editingRuleId);
+  if (idx === -1) return plannerState.rules.slice();
+  // Read current form values without mutating state
+  const type = document.getElementById('rule-type').value;
+  const label = (document.getElementById('rule-label').value || '').trim() || (type === 'recurring' ? 'Recurring' : 'One-time');
+  const amount = Math.max(0, parseFloat(document.getElementById('rule-amount').value) || 0);
+  const growthPctPerYear = Math.max(0, parseFloat(document.getElementById('rule-growth').value) || 0);
+  const startMonth = Math.max(1, parseInt(document.getElementById('rule-start').value) || 1);
+  const frequency = document.getElementById('rule-frequency').value;
+  const endVal = document.getElementById('rule-end').value;
+  const endMonth = endVal ? Math.max(startMonth, parseInt(endVal)) : undefined;
+  const adjustForInflationRule = !!document.getElementById('rule-adjust-inflation').checked;
+
+  const base = plannerState.rules[idx];
+  const preview = { ...base, type, label, amount, startMonth, growthPctPerYear, adjustForInflationRule };
+  if (type === 'recurring') {
+    preview.frequency = frequency;
+    if (endMonth) preview.endMonth = endMonth; else delete preview.endMonth;
+  } else {
+    delete preview.frequency;
+    delete preview.endMonth;
+  }
+  const arr = plannerState.rules.slice();
+  arr[idx] = preview;
+  return arr;
+}

@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Budget Estimator</title>
+  <script src="common.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Roboto', sans-serif; margin:0; padding:0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height:100vh; color:#333; }
+    .container { max-width: 1100px; margin: 0 auto; padding: 32px 20px; }
+    header { display:flex; justify-content: space-between; align-items:center; margin-bottom:16px; color:white; }
+    .title { font-size: 1.8em; font-weight:300; }
+    .panel { background: rgba(255,255,255,.95); border-radius:12px; box-shadow: 0 8px 25px rgba(0,0,0,.15); padding:16px; margin-bottom:16px; backdrop-filter: blur(10px); }
+    .grid-3 { display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:16px; }
+    label { display:block; font-weight:500; margin-bottom:6px; color:#555; }
+    input, select { width:100%; max-width:260px; padding:10px; border:1px solid #ddd; border-radius:6px; font-size:14px; }
+    input:focus, select:focus { outline:none; border-color:#1976d2; box-shadow:0 0 0 2px rgba(25,118,210,0.2); }
+    .row { display:flex; gap:8px; align-items:flex-end; flex-wrap:wrap; }
+    .btn { background: linear-gradient(45deg, #667eea, #764ba2); color:#fff; border:none; border-radius:6px; padding:10px 12px; cursor:pointer; transition: all .2s ease; }
+    .btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,.15); }
+    .btn.danger { background:#e53935; }
+    .btn.secondary { background: rgba(255,255,255,0.2); border:1px solid rgba(255,255,255,.3); }
+    .items { margin-top:8px; }
+    .item { display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #eee; }
+    .item:last-child { border-bottom:none; }
+    .item-line { display:flex; justify-content:space-between; gap:12px; }
+    .item-cat { font-weight:700; color:#263238; }
+    .item-detail { color:#607d8b; }
+    .item-amount { font-weight:700; }
+    .actions .danger { background: transparent; color:#e53935; border:1px solid rgba(229,57,53,.3); padding:6px 10px; border-radius:6px; transition: all .2s ease; }
+    .actions .danger:hover { background: rgba(229,57,53,.08); box-shadow: 0 2px 8px rgba(0,0,0,.08); transform: translateY(-1px); }
+    .actions .danger:focus { outline:none; box-shadow: 0 0 0 2px rgba(229,57,53,.2); }
+    .summary { display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:12px; }
+    .summary .card { background:#ffffff; border-radius:10px; box-shadow: 0 6px 18px rgba(0,0,0,.12); padding:14px; position:relative; overflow:hidden; }
+    .card .label { font-size:12px; color:#546e7a; text-transform:uppercase; letter-spacing:.5px; font-weight:700; }
+    .card .value { font-size:22px; font-weight:800; color:#263238; margin-top:4px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <a href="index.html" class="btn secondary">← Back</a>
+      <div class="title">Budget Estimator</div>
+      <div></div>
+    </header>
+
+    <div class="panel">
+      <div class="grid-3">
+        <div>
+          <label for="monthly-income">Monthly Income</label>
+          <input type="number" id="monthly-income" min="0" placeholder="e.g., 6000">
+        </div>
+        <div>
+          <label>&nbsp;</label>
+          <button id="refresh-profile" class="btn">Use About You income</button>
+        </div>
+        <div style="text-align:right;align-self:end;">
+          <button id="clear-budget" class="btn danger">Clear Budget</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="grid-3">
+        <div>
+          <label>Fixed expense</label>
+          <div class="row">
+            <select id="fixed-name">
+              <option value="Rent/Mortgage">Rent/Mortgage</option>
+              <option value="Utilities">Utilities</option>
+              <option value="Insurance">Insurance</option>
+              <option value="Transport">Transport</option>
+              <option value="custom">Custom…</option>
+            </select>
+            <input id="fixed-custom" placeholder="Custom name" style="display:none;">
+          </div>
+          <input id="fixed-detail" placeholder="Details (optional)" style="margin-top:6px;">
+          <input id="fixed-amount" type="number" min="0" placeholder="Amount" style="margin-top:6px;">
+          <button id="add-fixed" class="btn" style="margin-top:6px;">Add Fixed</button>
+          <div class="items" id="fixed-list"></div>
+        </div>
+        <div>
+          <label>Variable expense</label>
+          <div class="row">
+            <select id="var-name">
+              <option value="Groceries">Groceries</option>
+              <option value="Entertainment">Entertainment</option>
+              <option value="Fuel">Fuel</option>
+              <option value="custom">Custom…</option>
+            </select>
+            <input id="var-custom" placeholder="Custom name" style="display:none;">
+          </div>
+          <input id="var-detail" placeholder="Details (optional)" style="margin-top:6px;">
+          <div class="row" style="margin-top:6px;">
+            <input id="var-min" type="number" min="0" placeholder="Min">
+            <input id="var-max" type="number" min="0" placeholder="Max">
+          </div>
+          <button id="add-var" class="btn" style="margin-top:6px;">Add Variable</button>
+          <div class="items" id="var-list"></div>
+        </div>
+        <div>
+          <label>Unplanned</label>
+          <div class="row">
+            <select id="unp-name">
+              <option value="Medical">Medical</option>
+              <option value="Gifts">Gifts</option>
+              <option value="Maintenance">Maintenance</option>
+              <option value="custom">Custom…</option>
+            </select>
+            <input id="unp-custom" placeholder="Custom name" style="display:none;">
+          </div>
+          <input id="unp-detail" placeholder="Details (optional)" style="margin-top:6px;">
+          <input id="unp-amount" type="number" min="0" placeholder="Amount" style="margin-top:6px;">
+          <button id="add-unp" class="btn" style="margin-top:6px;">Add Unplanned</button>
+          <div class="items" id="unp-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="summary">
+        <div class="card"><div class="label">Income</div><div class="value" id="sum-income">-</div></div>
+        <div class="card"><div class="label">Fixed</div><div class="value" id="sum-fixed">-</div></div>
+        <div class="card"><div class="label">Variable (min)</div><div class="value" id="sum-var-min">-</div></div>
+        <div class="card"><div class="label">Variable (max)</div><div class="value" id="sum-var-max">-</div></div>
+        <div class="card"><div class="label">Unplanned</div><div class="value" id="sum-unp">-</div></div>
+        <div class="card"><div class="label">Leftover (best)</div><div class="value" id="leftover-best">-</div></div>
+        <div class="card"><div class="label">Leftover (worst)</div><div class="value" id="leftover-worst">-</div></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="budget-estimator.js"></script>
+</body>
+</html>
+
+

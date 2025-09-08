@@ -114,43 +114,35 @@
     </div>
 
     <div class="panel">
-      <div class="section-title">Summary</div>
-      <div class="stat-grid">
-        <div class="stat-card accent-blue">
-          <div class="stat-icon">🎂</div>
-          <div class="stat-title">Current Age</div>
-          <div class="stat-value" id="sum-age">-</div>
+      <div class="section-title">📊 Financial Overview</div>
+      <div class="grid-2">
+        <div>
+          <div class="section-title">💼 Income & Budget</div>
+          <div class="row"><div class="label">Monthly Income</div><div class="value" id="ov-income">-</div></div>
+          <div class="row"><div class="label">Fixed Expenses</div><div class="value" id="ov-fixed">-</div></div>
+          <div class="row"><div class="label">Variable Expenses</div><div class="value"><span id="ov-var-min">-</span> - <span id="ov-var-max">-</span></div></div>
+          <div class="row"><div class="label">Unplanned</div><div class="value" id="ov-unplanned">-</div></div>
+          <div class="row"><div class="label">Leftover (Best/Worst)</div><div class="value"><span id="ov-leftover-best">-</span> / <span id="ov-leftover-worst">-</span></div></div>
         </div>
-        <div class="stat-card accent-purple">
-          <div class="stat-icon">🧾</div>
-          <div class="stat-title">Number of Loans</div>
-          <div class="stat-value" id="sum-loans">-</div>
+        <div>
+          <div class="section-title">🏦 Loans</div>
+          <div class="row"><div class="label">Number of Loans</div><div class="value" id="ov-loans-count">-</div></div>
+          <div class="row"><div class="label">Total Balance</div><div class="value" id="ov-loans-balance">-</div></div>
+          <div class="row"><div class="label">Monthly Repayments</div><div class="value" id="ov-loans-monthly">-</div></div>
+          <div class="row"><div class="label">Accounted in Budget</div><div class="value"><label style="display:flex;align-items:center;gap:8px;"><input type="checkbox" id="ov-loans-accounted"><span id="ov-loans-accounted-label">No</span></label></div></div>
+
+          <div class="section-title" style="margin-top:12px;">📈 Investments</div>
+          <div class="row"><div class="label">Monthly Investment Needed</div><div class="value" id="ov-invest-monthly">-</div></div>
+          <div class="row"><div class="label">Target Portfolio Value</div><div class="value" id="ov-invest-portfolio">-</div></div>
+          <div class="row"><div class="label">Accounted in Budget</div><div class="value"><label style="display:flex;align-items:center;gap:8px;"><input type="checkbox" id="ov-invest-accounted"><span id="ov-invest-accounted-label">No</span></label></div></div>
+
+          <div class="section-title" style="margin-top:12px;">🧮 After Commitments</div>
+          <div class="row"><div class="label">Leftover (Best/Worst)</div><div class="value"><span id="ov-after-best">-</span> / <span id="ov-after-worst">-</span></div></div>
         </div>
-        <div class="stat-card accent-orange">
-          <div class="stat-icon">💳</div>
-          <div class="stat-title">Total Loan Balance</div>
-          <div class="stat-value" id="sum-loan-balance">-</div>
-        </div>
-        <div class="stat-card accent-blue">
-          <div class="stat-icon">📉</div>
-          <div class="stat-title">Total Loan Monthly Payments</div>
-          <div class="stat-value" id="sum-loan-monthly">-</div>
-        </div>
-        <div class="stat-card accent-green">
-          <div class="stat-icon">🎯</div>
-          <div class="stat-title">Target Portfolio Value</div>
-          <div class="stat-value" id="sum-target-portfolio">-</div>
-        </div>
-        <div class="stat-card accent-green">
-          <div class="stat-icon">📈</div>
-          <div class="stat-title">Monthly Investment Needed</div>
-          <div class="stat-value" id="sum-monthly-invest">-</div>
-        </div>
-        <div class="stat-card accent-red">
-          <div class="stat-icon">💸</div>
-          <div class="stat-title">Total Monthly Outflow</div>
-          <div class="stat-value" id="sum-monthly-outflow">-</div>
-        </div>
+      </div>
+      <div style="margin-top:12px;">
+        <div class="section-title">💡 Suggestions</div>
+        <ul id="ov-suggestions" style="margin:0;padding-left:18px;color:#333;"></ul>
       </div>
     </div>
 
@@ -182,6 +174,9 @@
     }
     function saveProfile(p){
       try{ localStorage.setItem('aboutYouProfile', JSON.stringify(p)); }catch(e){}
+    }
+    function readBudgetSummary(){
+      try{ return JSON.parse(localStorage.getItem('budgetEstimatorSummary'))||null; }catch(e){ return null; }
     }
 
     function computeLoanSummary(loan){
@@ -223,6 +218,7 @@
       const inv = readInvestTarget();
       const plan = readInvestPlanner();
       const profile = readProfile() || {};
+      const budget = readBudgetSummary();
 
       // Populate profile inputs
       document.getElementById('user-dob').value = profile.dateOfBirth || '';
@@ -236,6 +232,19 @@
       document.getElementById('inflation-default').value = profile.inflationDefault != null ? profile.inflationDefault : '';
       document.getElementById('swr-default').value = profile.swrDefault != null ? profile.swrDefault : '';
       document.getElementById('tax-bracket').value = profile.taxBracket != null ? profile.taxBracket : '';
+      // Load accounted toggles
+      (function(){
+        const loansChk = document.getElementById('ov-loans-accounted');
+        const loansLbl = document.getElementById('ov-loans-accounted-label');
+        const invChk = document.getElementById('ov-invest-accounted');
+        const invLbl = document.getElementById('ov-invest-accounted-label');
+        const loansAcc = !!profile.loansAccountedInBudget;
+        const invAcc = !!profile.investmentsAccountedInBudget;
+        if (loansChk) loansChk.checked = loansAcc;
+        if (loansLbl) loansLbl.textContent = loansAcc ? 'Yes' : 'No';
+        if (invChk) invChk.checked = invAcc;
+        if (invLbl) invLbl.textContent = invAcc ? 'Yes' : 'No';
+      })();
 
       // Compute summaries
       const loanSum = computeLoanSummary(loan);
@@ -257,19 +266,70 @@
       })(profile.dateOfBirth);
 
       // Render
-      document.getElementById('sum-age').textContent = ageYears != null ? ageYears : '-';
-      document.getElementById('sum-loans').textContent = loanSum.count;
-      document.getElementById('sum-loan-balance').textContent = currency(loanSum.currentBalance);
-      document.getElementById('sum-loan-monthly').textContent = currency(loanSum.totalMonthly);
-      document.getElementById('sum-target-portfolio').textContent = currency(invSum.targetPortfolio);
-      document.getElementById('sum-monthly-invest').textContent = currency(Math.max(invSum.monthlyInvest, planSum.monthlyInvest));
-      document.getElementById('sum-monthly-outflow').textContent = currency(totalMonthlyOutflow);
+      // Overview top facts
+      const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+      set('sum-age', ageYears != null ? ageYears : '-');
+
+      // Loans
+      set('ov-loans-count', loanSum.count);
+      set('ov-loans-balance', currency(loanSum.currentBalance));
+      set('ov-loans-monthly', currency(loanSum.totalMonthly));
+
+      // Investments
+      set('ov-invest-portfolio', currency(invSum.targetPortfolio));
+      set('ov-invest-monthly', currency(Math.max(invSum.monthlyInvest, planSum.monthlyInvest)));
+
+      // Render income & budget from budget summary when available
+      if (budget) {
+        const fmt = (v) => currency(v||0);
+        set('ov-income', fmt(budget?.income));
+        set('ov-fixed', fmt(budget?.budget?.sumFixed));
+        set('ov-var-min', fmt(budget?.budget?.sumVarMin));
+        set('ov-var-max', fmt(budget?.budget?.sumVarMax));
+        set('ov-unplanned', fmt(budget?.budget?.sumUnp));
+
+        // Adjust leftovers based on accounted toggles
+        (function(){
+          const loansAcc = !!profile.loansAccountedInBudget;
+          const invAcc = !!profile.investmentsAccountedInBudget;
+          const loanMonthly = Number(budget?.loans?.totalMonthly)||0;
+          const investMonthly = Number(budget?.investments?.monthlyNeeded)||0;
+          const best = Number(budget?.budget?.leftoverBest)||0;
+          const worst = Number(budget?.budget?.leftoverWorst)||0;
+          const adjBest = best - (loansAcc ? 0 : loanMonthly) - (invAcc ? 0 : investMonthly);
+          const adjWorst = worst - (loansAcc ? 0 : loanMonthly) - (invAcc ? 0 : investMonthly);
+          set('ov-leftover-best', fmt(adjBest));
+          set('ov-leftover-worst', fmt(adjWorst));
+        })();
+
+        // Always show after-commitments baseline (subtracting both)
+        set('ov-after-best', fmt(budget?.afterCommitmentsBest));
+        set('ov-after-worst', fmt(budget?.afterCommitmentsWorst));
+
+        const sugEl = document.getElementById('ov-suggestions');
+        if (sugEl) {
+          const sugs = Array.isArray(budget.suggestions) ? budget.suggestions : [];
+          sugEl.innerHTML = sugs.map(s => `<li>${String(s).replace(/</g,'&lt;').replace(/>/g,'&gt;')}</li>`).join('');
+        }
+      } else {
+        // Fallbacks from profile/loan/invest if no budget summary
+        set('ov-income', currency(profile.income || 0));
+        set('ov-fixed', '-');
+        set('ov-var-min', '-');
+        set('ov-var-max', '-');
+        set('ov-unplanned', '-');
+        set('ov-leftover-best', '-');
+        set('ov-leftover-worst', '-');
+        set('ov-after-best', '-');
+        set('ov-after-worst', '-');
+      }
 
       const raw = {
         profile,
         loanLensState: loan,
         investmentTargetState: inv,
-        investmentPlannerState: plan
+        investmentPlannerState: plan,
+        budgetEstimatorSummary: budget
       };
       document.getElementById('raw-data').textContent = JSON.stringify(raw, null, 2);
     }
@@ -288,11 +348,44 @@
             expectedReturnDefault: document.getElementById('expected-return-default').value === '' ? null : Number(document.getElementById('expected-return-default').value),
             inflationDefault: document.getElementById('inflation-default').value === '' ? null : Number(document.getElementById('inflation-default').value),
             swrDefault: document.getElementById('swr-default').value === '' ? null : Number(document.getElementById('swr-default').value),
-            taxBracket: document.getElementById('tax-bracket').value === '' ? null : Number(document.getElementById('tax-bracket').value)
+            taxBracket: document.getElementById('tax-bracket').value === '' ? null : Number(document.getElementById('tax-bracket').value),
+            loansAccountedInBudget: document.getElementById('ov-loans-accounted').checked,
+            investmentsAccountedInBudget: document.getElementById('ov-invest-accounted').checked
           };
           saveProfile(p);
         });
       });
+      // Wire toggles
+      const syncToggleLabel = (chk, lbl) => { if (lbl) lbl.textContent = chk.checked ? 'Yes' : 'No'; };
+      const loansChk = document.getElementById('ov-loans-accounted');
+      const loansLbl = document.getElementById('ov-loans-accounted-label');
+      if (loansChk) loansChk.addEventListener('change', () => { syncToggleLabel(loansChk, loansLbl); persistAccountedFlags(); });
+      const invChk = document.getElementById('ov-invest-accounted');
+      const invLbl = document.getElementById('ov-invest-accounted-label');
+      if (invChk) invChk.addEventListener('change', () => { syncToggleLabel(invChk, invLbl); persistAccountedFlags(); });
+    }
+
+    function persistAccountedFlags(){
+      const current = readProfile() || {};
+      current.loansAccountedInBudget = !!document.getElementById('ov-loans-accounted').checked;
+      current.investmentsAccountedInBudget = !!document.getElementById('ov-invest-accounted').checked;
+      saveProfile(current);
+      // Recalculate adjusted leftovers live
+      try {
+        const budget = readBudgetSummary();
+        if (budget) {
+          const fmt = (v) => new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(v||0);
+          const loanMonthly = Number(budget?.loans?.totalMonthly)||0;
+          const investMonthly = Number(budget?.investments?.monthlyNeeded)||0;
+          const best = Number(budget?.budget?.leftoverBest)||0;
+          const worst = Number(budget?.budget?.leftoverWorst)||0;
+          const adjBest = best - (current.loansAccountedInBudget ? 0 : loanMonthly) - (current.investmentsAccountedInBudget ? 0 : investMonthly);
+          const adjWorst = worst - (current.loansAccountedInBudget ? 0 : loanMonthly) - (current.investmentsAccountedInBudget ? 0 : investMonthly);
+          const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = fmt(v); };
+          set('ov-leftover-best', adjBest);
+          set('ov-leftover-worst', adjWorst);
+        }
+      } catch(e){}
     }
 
     document.addEventListener('DOMContentLoaded', function(){

@@ -33,7 +33,7 @@
 
   function clearAllData(){
     if (!confirm('Clear ALL saved data for this site? This cannot be undone.')) return;
-    ['loanLensState','investmentTargetState','investmentPlannerState','aboutYouProfile','privacyBannerDismissed'].forEach(k => localStorage.removeItem(k));
+    ['loanLensState','investmentTargetState','investmentPlannerState','aboutYouProfile','privacyBannerDismissed','budgetEstimator','budgetEstimatorSummary'].forEach(k => localStorage.removeItem(k));
     location.reload();
   }
 
